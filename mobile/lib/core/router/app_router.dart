@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../features/auth/auth_provider.dart';
-import '../../core/utils/app_logger.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../features/auth/auth_provider.dart';
+import '../utils/app_logger.dart';
 import '../../data/supabase/supabase_service.dart';
 import '../../features/splash/splash_page.dart';
 import '../../features/onboarding/onboarding_page.dart';
@@ -10,6 +12,7 @@ import '../../features/profile/profile_setup_page.dart';
 import '../../features/home/home_shell.dart';
 import '../../features/workout/workout_selection_page.dart';
 import '../../features/workout/exercise_detail_page.dart';
+import '../../features/workout/workout_history_page.dart';
 import '../../features/camera/camera_page.dart';
 import '../../features/summary/summary_page.dart';
 
@@ -20,7 +23,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/splash',
     debugLogDiagnostics: true,
-    refreshListenable: GoRouterRefreshStream(authState.value),
+    refreshListenable: GoRouterRefreshNotifier(ref),
     redirect: (context, state) async {
       final loc = state.matchedLocation;
       
@@ -29,8 +32,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       final loggedIn = user != null;
       
       // Check if guest mode
-      final prefs = ref.read(isGuestProvider);
-      final isGuest = await prefs.future;
+      final isGuestAsync = ref.read(isGuestProvider);
+      final isGuest = isGuestAsync.value ?? false;
       
       AppLogger.debug('🧭 Router redirect: location=$loc, loggedIn=$loggedIn, isGuest=$isGuest');
 
@@ -119,6 +122,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
+        path: '/workout-history',
+        builder: (c, s) {
+          AppLogger.debug('📱 Navigating to: /workout-history');
+          return const WorkoutHistoryPage();
+        },
+      ),
+      GoRoute(
         path: '/exercise/:id',
         builder: (c, s) {
           final id = s.pathParameters['id']!;
@@ -145,19 +155,15 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 });
 
-/// Helper class to make GoRouter reactive to auth state changes
-class GoRouterRefreshStream extends ChangeNotifier {
-  GoRouterRefreshStream(AuthState? authState) {
-    _subscription = Stream.value(authState).listen((_) {
-      notifyListeners();
-    });
-  }
-
-  late final _subscription;
-
-  @override
-  void dispose() {
-    _subscription.cancel();
-    super.dispose();
+/// Helper class to make GoRouter reactive to Riverpod state changes  
+class GoRouterRefreshNotifier with ChangeNotifier {
+  GoRouterRefreshNotifier(Ref ref) {
+    // Watch auth state and notify listeners on changes
+    ref.listen(
+      authStateProvider,
+      (_, __) {
+        notifyListeners();
+      },
+    );
   }
 }

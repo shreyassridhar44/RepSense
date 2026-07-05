@@ -244,6 +244,113 @@ class SupabaseService {
     }
   }
 
+  Future<List<Map<String, dynamic>>> getWorkoutsForExercise(String userId, String exerciseId) async {
+    try {
+      AppLogger.debug('📊 Fetching workouts for exercise: $exerciseId');
+      final res = await client
+          .from('workouts')
+          .select()
+          .eq('user_id', userId)
+          .eq('exercise_id', exerciseId)
+          .order('created_at', ascending: false);
+      final workouts = List<Map<String, dynamic>>.from(res);
+      AppLogger.info('✅ Fetched ${workouts.length} workouts for exercise: $exerciseId');
+      return workouts;
+    } catch (e, stack) {
+      AppLogger.error('❌ Failed to fetch workouts for exercise', e, stack);
+      throw AppException.fromSupabase(e);
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getAllWorkoutHistory(String userId) async {
+    try {
+      AppLogger.debug('📊 Fetching all workout history for user: $userId');
+      final res = await client
+          .from('workouts')
+          .select('*, exercises(*)')
+          .eq('user_id', userId)
+          .order('created_at', ascending: false);
+      final workouts = List<Map<String, dynamic>>.from(res);
+      AppLogger.info('✅ Fetched ${workouts.length} workout history entries');
+      return workouts;
+    } catch (e, stack) {
+      AppLogger.error('❌ Failed to fetch workout history', e, stack);
+      throw AppException.fromSupabase(e);
+    }
+  }
+
+  Future<Map<String, dynamic>?> getExerciseById(String id) async {
+    try {
+      AppLogger.debug('📊 Fetching exercise by ID: $id');
+      final res = await client
+          .from('exercises')
+          .select()
+          .eq('id', id)
+          .maybeSingle();
+      
+      if (res != null) {
+        AppLogger.info('✅ Exercise found: $id');
+      } else {
+        AppLogger.info('⚠️ Exercise not found: $id');
+      }
+      
+      return res;
+    } catch (e, stack) {
+      AppLogger.error('❌ Failed to fetch exercise by ID', e, stack);
+      throw AppException.fromSupabase(e);
+    }
+  }
+
+  Future<List<String>> getFavoriteExerciseIds(String userId) async {
+    try {
+      AppLogger.debug('⭐ Fetching favorite exercise IDs for user: $userId');
+      final res = await client
+          .from('user_favorites')
+          .select('exercise_id')
+          .eq('user_id', userId);
+      
+      final favorites = List<Map<String, dynamic>>.from(res);
+      final ids = favorites
+          .map((f) => f['exercise_id'] as String)
+          .toList();
+      
+      AppLogger.info('✅ Fetched ${ids.length} favorite exercise IDs');
+      return ids;
+    } catch (e, stack) {
+      AppLogger.error('❌ Failed to fetch favorite exercise IDs', e, stack);
+      throw AppException.fromSupabase(e);
+    }
+  }
+
+  Future<void> addFavorite(String userId, String exerciseId) async {
+    try {
+      AppLogger.debug('⭐ Adding favorite: user=$userId, exercise=$exerciseId');
+      await client.from('user_favorites').insert({
+        'user_id': userId,
+        'exercise_id': exerciseId,
+      });
+      AppLogger.info('✅ Favorite added successfully');
+    } catch (e, stack) {
+      AppLogger.error('❌ Failed to add favorite', e, stack);
+      throw AppException.fromSupabase(e);
+    }
+  }
+
+  Future<void> removeFavorite(String userId, String exerciseId) async {
+    try {
+      AppLogger.debug('⭐ Removing favorite: user=$userId, exercise=$exerciseId');
+      await client
+          .from('user_favorites')
+          .delete()
+          .eq('user_id', userId)
+          .eq('exercise_id', exerciseId);
+      AppLogger.info('✅ Favorite removed successfully');
+    } catch (e, stack) {
+      AppLogger.error('❌ Failed to remove favorite', e, stack);
+      throw AppException.fromSupabase(e);
+    }
+  }
+
   Future<Map<String, dynamic>> insertWorkout(Map<String, dynamic> workout) async {
     try {
       AppLogger.debug('📊 Inserting workout: ${workout['exercise_id']}');

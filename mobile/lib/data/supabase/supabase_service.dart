@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/utils/app_logger.dart';
+import '../../core/utils/app_exception.dart';
 
 class SupabaseService {
   SupabaseService._();
@@ -188,20 +189,58 @@ class SupabaseService {
     }
   }
 
-  Future<List<Map<String, dynamic>>> getWorkoutHistory(String userId) async {
+  Future<List<Map<String, dynamic>>> getAllWorkouts(String userId) async {
     try {
-      AppLogger.debug('📊 Fetching workout history for user: $userId');
+      AppLogger.debug('📊 Fetching all workouts for user: $userId');
       final res = await client
           .from('workouts')
-          .select()
+          .select('*, exercises(*)')
           .eq('user_id', userId)
           .order('created_at', ascending: false);
       final workouts = List<Map<String, dynamic>>.from(res);
-      AppLogger.info('✅ Fetched ${workouts.length} workouts for user: $userId');
+      AppLogger.info('✅ Fetched ${workouts.length} workouts');
       return workouts;
     } catch (e, stack) {
-      AppLogger.error('❌ Failed to fetch workout history for user: $userId', e, stack);
-      rethrow;
+      AppLogger.error('❌ Failed to fetch all workouts', e, stack);
+      throw AppException.fromSupabase(e);
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getWorkoutsInLastDays(String userId, int days) async {
+    try {
+      AppLogger.debug('📊 Fetching workouts from last $days days for user: $userId');
+      final cutoffDate = DateTime.now().subtract(Duration(days: days));
+      
+      final res = await client
+          .from('workouts')
+          .select('*, exercises(*)')
+          .eq('user_id', userId)
+          .gte('created_at', cutoffDate.toIso8601String())
+          .order('created_at', ascending: false);
+      
+      final workouts = List<Map<String, dynamic>>.from(res);
+      AppLogger.info('✅ Fetched ${workouts.length} workouts from last $days days');
+      return workouts;
+    } catch (e, stack) {
+      AppLogger.error('❌ Failed to fetch workouts from last $days days', e, stack);
+      throw AppException.fromSupabase(e);
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getAchievements(String userId) async {
+    try {
+      AppLogger.debug('🏆 Fetching achievements for user: $userId');
+      final res = await client
+          .from('achievements')
+          .select()
+          .eq('user_id', userId)
+          .order('unlocked_at', ascending: false);
+      final achievements = List<Map<String, dynamic>>.from(res);
+      AppLogger.info('✅ Fetched ${achievements.length} achievements');
+      return achievements;
+    } catch (e, stack) {
+      AppLogger.error('❌ Failed to fetch achievements', e, stack);
+      throw AppException.fromSupabase(e);
     }
   }
 

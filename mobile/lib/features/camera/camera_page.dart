@@ -1,277 +1,419 @@
-import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:go_router/go_router.dart';
-import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
-import '../../core/theme/app_colors.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/providers/providers.dart';
+import '../../core/theme/app_theme.dart';
+import 'camera_state.dart';
 import 'pose_painter.dart';
-import 'rep_counter.dart';
+import 'widgets/permission_denied_view.dart';
+import 'widgets/top_status_bar.dart';
+import 'widgets/rep_counter_widget.dart';
+import 'widgets/feedback_banner.dart';
+import 'widgets/bottom_controls.dart';
+import 'widgets/rep_quality_strip.dart';
+import 'widgets/countdown_overlay.dart';
+import 'widgets/paused_overlay.dart';
+import 'widgets/set_config_sheet.dart';
 
-/// The Camera Screen — "the most important screen" per the RepSense design
-/// document. Minimal chrome, full-screen camera, live skeleton overlay,
-/// real-time AI feedback, and an animated rep counter.
-///
-/// Pose estimation runs ON-DEVICE via ML Kit (fast, lightweight, matches the
-/// "Local AI Inference Layer" subsystem in the technical spec). Frames /
-/// joint-angle sequences can optionally be streamed to the Inference Service
-/// for deeper biomechanical scoring — see `lib/data/repositories` for the
-/// Dio client hook-up point.
-class CameraPage extends StatefulWidget {
-  const CameraPage({super.key, required this.exerciseId});
+/// Main camera page for real-time pose detection and rep counting
+class CameraPage extends ConsumerStatefulWidget {
   final String exerciseId;
 
+  const CameraPage({
+    super.key,
+    required this.exerciseId,
+  });
+
   @override
-  State<CameraPage> createState() => _CameraPageState();
+  ConsumerState<CameraPage> createState() => _CameraPageState();
 }
 
-class _CameraPageState extends State<CameraPage> {
-  CameraController? _controller;
-  late final PoseDetector _poseDetector;
-  final _repCounter = RepCounter();
-
-  Pose? _pose;
-  Size _imageSize = const Size(480, 640);
-  bool _isFrontCamera = true;
-  bool _isStreaming = false;
-  bool _busy = false;
-  String _feedback = 'Step into frame to begin.';
-
+class _CameraPageState extends ConsumerState<CameraPage> {
   @override
   void initState() {
     super.initState();
-    _poseDetector = PoseDetector(
-      options: PoseDetectorOptions(mode: PoseDetectionMode.stream),
-    );
-    _initCamera();
-  }
+    
+    // Lock orientation to portrait
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
 
-  Future<void> _initCamera() async {
-    final cameras = await availableCameras();
-    final camera = cameras.firstWhere(
-      (c) => c.lensDirection == CameraLensDirection.front,
-      orElse: () => cameras.first,
-    );
-    _isFrontCamera = camera.lensDirection == CameraLensDirection.front;
-
-    final controller = CameraController(
-      camera,
-      ResolutionPreset.medium,
-      enableAudio: false,
-      imageFormatGroup: ImageFormatGroup.nv21,
-    );
-    await controller.initialize();
-    if (!mounted) return;
-    setState(() => _controller = controller);
-  }
-
-  void _toggleStream() {
-    if (_controller == null) return;
-    if (_isStreaming) {
-      _controller!.stopImageStream();
-      setState(() => _isStreaming = false);
-    } else {
-      _controller!.startImageStream(_processFrame);
-      setState(() => _isStreaming = true);
-    }
-  }
-
-  Future<void> _processFrame(CameraImage image) async {
-    if (_busy) return;
-    _busy = true;
-    try {
-      final inputImage = _toInputImage(image);
-      if (inputImage == null) return;
-      final poses = await _poseDetector.processImage(inputImage);
-      if (poses.isNotEmpty) {
-        final pose = poses.first;
-        final angle = _repCounter.kneeAngle(pose);
-        if (angle != null) {
-          final completed = _repCounter.update(angle);
-          if (completed && mounted) {
-            setState(() => _feedback = 'Great rep! Maintain a neutral spine.');
-          }
-        }
-        if (mounted) {
-          setState(() {
-            _pose = pose;
-            _imageSize = Size(image.width.toDouble(), image.height.toDouble());
-          });
-        }
-      }
-    } finally {
-      _busy = false;
-    }
-  }
-
-  InputImage? _toInputImage(CameraImage image) {
-    // NOTE: production builds should use a platform-specific converter
-    // (see google_mlkit_commons examples) to correctly build the
-    // InputImageRotation/format per Android vs iOS. Stubbed here for
-    // brevity — wire up `camera` -> `InputImage` conversion utilities.
-    return null;
-  }
-
-  void _finishSet() {
-    if (_isStreaming) _toggleStream();
-    context.pushReplacement('/summary', extra: {
-      'exerciseId': widget.exerciseId,
-      'reps': _repCounter.reps,
-      'avgScore': 91,
+    // Initialize camera
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(cameraProvider.notifier).initialize(widget.exerciseId);
     });
   }
 
   @override
   void dispose() {
-    _controller?.dispose();
-    _poseDetector.close();
+    // Restore all orientations
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(cameraProvider);
+
     return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: _controller != null && _controller!.value.isInitialized
-                ? CameraPreview(_controller!)
-                : const Center(child: CircularProgressIndicator(color: AppColors.electricBlue)),
+      backgroundColor: AppTheme.richBlack,
+      body: SafeArea(
+        child: _buildBody(context, state),
+      ),
+    );
+  }
+
+  Widget _buildBody(BuildContext context, CameraState state) {
+    switch (state.status) {
+      case CameraStatus.permissionDenied:
+      case CameraStatus.permissionPermanentlyDenied:
+        return PermissionDeniedView(
+          isPermanent: state.status == CameraStatus.permissionPermanentlyDenied,
+          onRequestPermission: () {
+            ref.read(cameraProvider.notifier).initialize(widget.exerciseId);
+          },
+        );
+
+      case CameraStatus.initializing:
+        return const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: AppTheme.electricBlue),
+              SizedBox(height: 16),
+              Text(
+                'Initializing camera...',
+                style: TextStyle(color: AppTheme.platinum),
+              ),
+            ],
           ),
-          Positioned.fill(
-            child: CustomPaint(
-              painter: PosePainter(pose: _pose, imageSize: _imageSize, isFrontCamera: _isFrontCamera),
-            ),
+        );
+
+      case CameraStatus.ready:
+        return _buildReadyView(context, state);
+
+      case CameraStatus.countdown:
+      case CameraStatus.streaming:
+      case CameraStatus.paused:
+        return _buildStreamingView(context, state);
+
+      case CameraStatus.error:
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red, size: 64),
+              const SizedBox(height: 16),
+              Text(
+                state.errorMessage ?? 'An error occurred',
+                style: const TextStyle(color: AppTheme.platinum),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Go Back'),
+              ),
+            ],
           ),
-          // Top status bar
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    onPressed: () => context.pop(),
-                    icon: const Icon(Icons.close_rounded, color: Colors.white),
-                  ),
-                  Row(children: const [
-                    _StatusChip(icon: Icons.wifi_rounded, label: 'AI Ready'),
-                    SizedBox(width: 8),
-                    _StatusChip(icon: Icons.bolt_rounded, label: '30 FPS'),
-                  ]),
-                ],
+        );
+
+      case CameraStatus.finished:
+        // Navigate to summary (will be implemented in summary feature)
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          Navigator.of(context).pop(); // For now, just go back
+        });
+        return const SizedBox.shrink();
+    }
+  }
+
+  /// Ready state - show configuration sheet
+  Widget _buildReadyView(BuildContext context, CameraState state) {
+    final controller = state.controller;
+    if (controller == null || !controller.value.isInitialized) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return Stack(
+      children: [
+        // Camera preview
+        Center(
+          child: AspectRatio(
+            aspectRatio: controller.value.aspectRatio,
+            child: _buildCameraPreview(state),
+          ),
+        ),
+
+        // Top bar
+        TopStatusBar(
+          exerciseName: state.exerciseName,
+          fps: state.fps,
+          isLightingGood: state.isLightingGood,
+          isDistanceGood: state.isDistanceGood,
+          onBack: () => Navigator.of(context).pop(),
+        ),
+
+        // Configure & Start button
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 32,
+          child: Center(
+            child: ElevatedButton(
+              onPressed: () => _showConfigSheet(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.electricBlue,
+                padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 16),
+              ),
+              child: const Text(
+                'Configure & Start',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ),
           ),
-          // Rep counter
-          Positioned(
-            top: 90,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Text(
-                '${_repCounter.reps}',
-                style: const TextStyle(
-                  fontSize: 72,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                  shadows: [Shadow(blurRadius: 20, color: AppColors.electricBlue)],
-                ),
-              ).animate(target: 1).scale(duration: 200.ms),
-            ),
+        ),
+      ],
+    );
+  }
+
+  /// Streaming state - show full UI
+  Widget _buildStreamingView(BuildContext context, CameraState state) {
+    final controller = state.controller;
+    if (controller == null || !controller.value.isInitialized) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return Stack(
+      children: [
+        // Camera preview with skeleton overlay
+        Center(
+          child: AspectRatio(
+            aspectRatio: controller.value.aspectRatio,
+            child: _buildCameraPreview(state),
           ),
-          // Real-time feedback banner
+        ),
+
+        // Top bar
+        TopStatusBar(
+          exerciseName: state.exerciseName,
+          fps: state.fps,
+          isLightingGood: state.isLightingGood,
+          isDistanceGood: state.isDistanceGood,
+          onBack: () => _handleBack(context),
+        ),
+
+        // Rep counter (center)
+        Positioned(
+          left: 0,
+          right: 0,
+          top: MediaQuery.of(context).size.height * 0.35,
+          child: RepCounterWidget(
+            repCount: state.repCount,
+            targetReps: state.targetReps,
+            currentPhase: state.currentPhase,
+            lastRepWasCorrect: state.lastRepWasCorrect,
+          ),
+        ),
+
+        // Feedback banner
+        Positioned(
+          left: 16,
+          right: 16,
+          top: MediaQuery.of(context).size.height * 0.5,
+          child: FeedbackBanner(
+            message: state.feedbackMessage,
+            severity: state.feedbackSeverity,
+          ),
+        ),
+
+        // Rep quality strip
+        if (state.repQuality.isNotEmpty)
           Positioned(
-            bottom: 140,
             left: 16,
             right: 16,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              child: Container(
-                key: ValueKey(_feedback),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.55),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.white.withOpacity(0.1)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.smart_toy_rounded, color: AppColors.emerald, size: 18),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(_feedback, style: const TextStyle(color: Colors.white, fontSize: 13))),
-                  ],
-                ),
+            bottom: 140,
+            child: RepQualityStrip(repQuality: state.repQuality),
+          ),
+
+        // Bottom controls
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 32,
+          child: BottomControls(
+            showSkeleton: state.showSkeleton,
+            isStreaming: state.status == CameraStatus.streaming,
+            onToggleSkeleton: () {
+              ref.read(cameraProvider.notifier).toggleSkeleton();
+            },
+            onPauseResume: () {
+              if (state.status == CameraStatus.streaming) {
+                ref.read(cameraProvider.notifier).pauseStreaming();
+              } else {
+                ref.read(cameraProvider.notifier).resumeStreaming();
+              }
+            },
+            onFinish: () => _handleFinish(context),
+          ),
+        ),
+
+        // Countdown overlay
+        if (state.status == CameraStatus.countdown)
+          CountdownOverlay(countdown: state.countdownSeconds),
+
+        // Paused overlay
+        if (state.status == CameraStatus.paused)
+          PausedOverlay(
+            onResume: () {
+              ref.read(cameraProvider.notifier).resumeStreaming();
+            },
+          ),
+      ],
+    );
+  }
+
+  /// Build camera preview with optional skeleton overlay
+  Widget _buildCameraPreview(CameraState state) {
+    final controller = state.controller;
+    if (controller == null) return const SizedBox.shrink();
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Camera preview
+        controller.buildPreview(),
+
+        // Skeleton overlay
+        if (state.showSkeleton && state.currentPose != null)
+          CustomPaint(
+            painter: PosePainter(
+              pose: state.currentPose,
+              imageSize: Size(
+                controller.value.previewSize?.height ?? 1,
+                controller.value.previewSize?.width ?? 1,
               ),
+              isFrontCamera: state.isFrontCamera,
+              primaryJoint: _getPrimaryJoint(state.exerciseId),
             ),
           ),
-          // Bottom controls
-          Positioned(
-            bottom: 24,
-            left: 0,
-            right: 0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _RoundButton(icon: Icons.cameraswitch_rounded, onTap: () {}),
-                _RoundButton(
-                  icon: _isStreaming ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                  big: true,
-                  onTap: _toggleStream,
-                ),
-                _RoundButton(icon: Icons.stop_rounded, onTap: _finishSet),
-              ],
+      ],
+    );
+  }
+
+  /// Show configuration sheet
+  void _showConfigSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.richBlack,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SetConfigSheet(
+        currentTargetReps: ref.read(cameraProvider).targetReps,
+        currentCountdown: ref.read(cameraProvider).countdownSeconds,
+        voiceEnabled: ref.read(cameraProvider).voiceEnabled,
+        isFrontCamera: ref.read(cameraProvider).isFrontCamera,
+        onStart: (targetReps, countdown, voiceEnabled) {
+          ref.read(cameraProvider.notifier).setTargetReps(targetReps);
+          ref.read(cameraProvider.notifier).setCountdownSeconds(countdown);
+          if (voiceEnabled != ref.read(cameraProvider).voiceEnabled) {
+            ref.read(cameraProvider.notifier).toggleVoice();
+          }
+          ref.read(cameraProvider.notifier).startCountdown();
+        },
+        onCameraSwitch: () {
+          ref.read(cameraProvider.notifier).switchCamera();
+        },
+      ),
+    );
+  }
+
+  /// Handle back button during streaming
+  void _handleBack(BuildContext context) {
+    if (ref.read(cameraProvider).status == CameraStatus.streaming) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: AppTheme.richBlack,
+          title: const Text('Exit Workout?', style: TextStyle(color: AppTheme.platinum)),
+          content: const Text(
+            'Your progress will be lost if you exit now.',
+            style: TextStyle(color: AppTheme.platinum),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
             ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+                Navigator.of(context).pop(); // Close camera page
+              },
+              child: const Text('Exit', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        ),
+      );
+    } else {
+      Navigator.of(context).pop();
+    }
+  }
+
+  /// Handle finish button
+  void _handleFinish(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.richBlack,
+        title: const Text('Finish Set?', style: TextStyle(color: AppTheme.platinum)),
+        content: Text(
+          'Complete your set with ${ref.read(cameraProvider).repCount} reps?',
+          style: const TextStyle(color: AppTheme.platinum),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(); // Close dialog
+              ref.read(cameraProvider.notifier).finishSet();
+            },
+            child: const Text('Finish', style: TextStyle(color: AppTheme.emerald)),
           ),
         ],
       ),
     );
   }
-}
 
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.icon, required this.label});
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.4),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: 14, color: AppColors.emerald),
-        const SizedBox(width: 4),
-        Text(label, style: const TextStyle(color: Colors.white, fontSize: 11)),
-      ]),
-    );
-  }
-}
-
-class _RoundButton extends StatelessWidget {
-  const _RoundButton({required this.icon, required this.onTap, this.big = false});
-  final IconData icon;
-  final VoidCallback onTap;
-  final bool big;
-
-  @override
-  Widget build(BuildContext context) {
-    final size = big ? 72.0 : 52.0;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: big ? AppColors.primaryGradient : null,
-          color: big ? null : Colors.white.withOpacity(0.12),
-        ),
-        child: Icon(icon, color: Colors.white, size: big ? 32 : 22),
-      ),
-    );
+  /// Get primary joint to highlight based on exercise
+  String? _getPrimaryJoint(String exerciseId) {
+    switch (exerciseId.toLowerCase()) {
+      case 'squat':
+      case 'lunges':
+      case 'leg-press':
+        return 'knee';
+      case 'deadlift':
+        return 'hip';
+      case 'bench-press':
+      case 'push-up':
+      case 'pull-up':
+      case 'overhead-press':
+      case 'bicep-curl':
+      case 'tricep-extension':
+      case 'rows':
+      case 'lat-pulldown':
+      case 'shoulder-press':
+        return 'elbow';
+      default:
+        return null;
+    }
   }
 }

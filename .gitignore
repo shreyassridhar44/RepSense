@@ -1,0 +1,18 @@
+# Flutter / Dart
+mobile/.dart_tool/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/build/
+mobile/.env
+mobile/android/
+mobile/ios/
+mobile/*.iml
+
+# Python
+backend/**/__pycache__/
+backend/**/*.pyc
+backend/**/.venv/
+backend/**/.env
+
+# OS
+.DS_Store

@@ -1,5 +1,5 @@
 -- ============================================================================
--- RepSense — Supabase schema (Modules 1, 2, 3)
+-- RepSense — Supabase schema (Modules 1, 2, 3, 8)
 -- Run this in: Supabase Dashboard -> SQL Editor -> New query -> Run
 -- Safe to run multiple times - won't delete existing data
 -- ============================================================================
@@ -265,8 +265,20 @@ create table if not exists public.profiles (
   training_experience text default 'Beginner',
   preferred_units text default 'metric',
   goals text[],
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- Module 8: Gamification columns
+  xp_total integer not null default 0,
+  level integer not null default 1,
+  xp_this_week integer not null default 0,
+  xp_week_start date
 );
+
+-- Add gamification columns to existing profiles table (safe if columns exist)
+alter table public.profiles
+  add column if not exists xp_total integer not null default 0,
+  add column if not exists level integer not null default 1,
+  add column if not exists xp_this_week integer not null default 0,
+  add column if not exists xp_week_start date;
 
 alter table public.profiles enable row level security;
 
@@ -370,8 +382,27 @@ create table if not exists public.achievements (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   badge_key text not null,
-  unlocked_at timestamptz not null default now()
+  earned_at timestamptz not null default now(),
+  unique(user_id, badge_key)
 );
+
+-- Rename unlocked_at to earned_at if it exists (for compatibility)
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns 
+    where table_schema = 'public' 
+    and table_name = 'achievements' 
+    and column_name = 'unlocked_at'
+  ) and not exists (
+    select 1 from information_schema.columns 
+    where table_schema = 'public' 
+    and table_name = 'achievements' 
+    and column_name = 'earned_at'
+  ) then
+    alter table public.achievements rename column unlocked_at to earned_at;
+  end if;
+end $$;
 
 alter table public.achievements enable row level security;
 
@@ -406,7 +437,136 @@ begin
 end $$;
 
 -- ----------------------------------------------------------------------------
--- 7. STORAGE BUCKETS
+-- 7. MODULE 8: DAILY CHALLENGES
+-- ----------------------------------------------------------------------------
+create table if not exists public.daily_challenges (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  challenge_key text not null,
+  challenge_date date not null default current_date,
+  target_value integer not null,
+  current_value integer not null default 0,
+  is_completed boolean not null default false,
+  xp_reward integer not null,
+  completed_at timestamptz,
+  created_at timestamptz not null default now(),
+  unique(user_id, challenge_date)
+);
+
+alter table public.daily_challenges enable row level security;
+
+do $$
+begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'daily_challenges' and policyname = 'Users manage their own challenges') then
+    create policy "Users manage their own challenges"
+      on public.daily_challenges for all
+      using (auth.uid() = user_id);
+  end if;
+end $$;
+
+-- ----------------------------------------------------------------------------
+-- 8. MODULE 8: STREAK FREEZES (future feature)
+-- ----------------------------------------------------------------------------
+create table if not exists public.streak_freezes (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  used_on_date date not null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.streak_freezes enable row level security;
+
+do $$
+begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'streak_freezes' and policyname = 'Users manage their own streak freezes') then
+    create policy "Users manage their own streak freezes"
+      on public.streak_freezes for all
+      using (auth.uid() = user_id);
+  end if;
+end $$;
+
+-- ----------------------------------------------------------------------------
+-- 9. MODULE 8: WEEKLY LEADERBOARD
+-- ----------------------------------------------------------------------------
+create table if not exists public.leaderboard_weekly (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  display_name text not null,
+  xp_this_week integer not null default 0,
+  week_start date not null,
+  rank integer,
+  unique(user_id, week_start)
+);
+
+alter table public.leaderboard_weekly enable row level security;
+
+do $$
+begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'leaderboard_weekly' and policyname = 'Anyone can read leaderboard') then
+    create policy "Anyone can read leaderboard"
+      on public.leaderboard_weekly for select
+      using (true);
+  end if;
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'leaderboard_weekly' and policyname = 'Users update their own leaderboard entry') then
+    create policy "Users update their own leaderboard entry"
+      on public.leaderboard_weekly for all
+      using (auth.uid() = user_id);
+  end if;
+end $$;
+
+-- ----------------------------------------------------------------------------
+-- 10. MODULE 8: GAMIFICATION FUNCTIONS
+-- ----------------------------------------------------------------------------
+
+-- Function to sync leaderboard when XP changes
+create or replace function public.sync_leaderboard()
+returns trigger as $$
+begin
+  insert into public.leaderboard_weekly (user_id, display_name, xp_this_week, week_start)
+  values (
+    new.id,
+    coalesce(new.display_name, 'Athlete'),
+    new.xp_this_week,
+    new.xp_week_start
+  )
+  on conflict (user_id, week_start)
+  do update set
+    xp_this_week = excluded.xp_this_week,
+    display_name = excluded.display_name;
+  return new;
+end;
+$$ language plpgsql security definer;
+
+-- Create trigger for leaderboard sync (drop first to avoid duplicates)
+drop trigger if exists on_xp_updated on public.profiles;
+create trigger on_xp_updated
+  after update of xp_this_week on public.profiles
+  for each row execute procedure public.sync_leaderboard();
+
+-- Award XP function (atomic week rollover)
+create or replace function public.award_xp(p_user_id uuid, p_amount integer)
+returns table(new_total integer, new_week integer, new_level integer)
+language plpgsql security definer as $$
+declare
+  current_week_start date := date_trunc('week', current_date)::date;
+begin
+  update public.profiles
+  set
+    xp_total = xp_total + p_amount,
+    xp_this_week = case
+      when xp_week_start = current_week_start then xp_this_week + p_amount
+      else p_amount
+    end,
+    xp_week_start = current_week_start
+  where id = p_user_id
+  returning xp_total, xp_this_week, level into new_total, new_week, new_level;
+  
+  return next;
+end;
+$$;
+
+-- ----------------------------------------------------------------------------
+-- 11. STORAGE BUCKETS
 -- ----------------------------------------------------------------------------
 insert into storage.buckets (id, name, public)
 values ('workout-media', 'workout-media', false)

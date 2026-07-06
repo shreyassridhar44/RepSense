@@ -5,22 +5,22 @@ import '../../core/utils/app_logger.dart';
 import '../../core/utils/angle_utils.dart';
 import '../../data/models/inference_models.dart';
 import '../../data/repositories/inference_repository.dart';
-import '../../data/services/achievement_service.dart';
+import '../../data/services/gamification_service.dart';
 import '../../data/supabase/supabase_service.dart';
 import 'summary_state.dart';
 
-/// Summary notifier - orchestrates inference, save, and achievement checks
+/// Summary notifier - orchestrates inference, save, and gamification
 class SummaryNotifier extends StateNotifier<SummaryState> {
   final InferenceRepository _inferenceRepository;
-  final AchievementService _achievementService;
+  final GamificationService _gamificationService;
   final SupabaseService _supabase;
 
   SummaryNotifier({
     required InferenceRepository inferenceRepository,
-    required AchievementService achievementService,
+    required GamificationService gamificationService,
     required SupabaseService supabase,
   })  : _inferenceRepository = inferenceRepository,
-        _achievementService = achievementService,
+        _gamificationService = gamificationService,
         _supabase = supabase,
         super(const SummaryState());
 
@@ -177,8 +177,8 @@ class SummaryNotifier extends StateNotifier<SummaryState> {
 
       AppLogger.info('✅ Workout saved: $workoutId');
 
-      // Check achievements
-      await _checkAchievements(user.id);
+      // Process gamification (XP, challenges, achievements)
+      await _processGamification(user.id, workoutId);
     } catch (e, stack) {
       AppLogger.error('❌ Failed to save workout', e, stack);
       state = state.copyWith(
@@ -255,30 +255,53 @@ class SummaryNotifier extends StateNotifier<SummaryState> {
     }
   }
 
-  /// Check and unlock achievements
-  Future<void> _checkAchievements(String userId) async {
+  /// Process gamification (XP, challenges, achievements)
+  Future<void> _processGamification(String userId, String workoutId) async {
     try {
-      AppLogger.info('🏆 Checking achievements');
+      AppLogger.info('🎮 Processing gamification');
+
+      // Fetch workout data
+      final workoutData = await _supabase.client
+          .from('workouts')
+          .select('*')
+          .eq('id', workoutId)
+          .single();
 
       // Fetch all user workouts
-      final workouts = await _supabase.client
+      final allWorkouts = await _supabase.client
           .from('workouts')
           .select('*')
           .eq('user_id', userId)
           .order('created_at', ascending: false);
 
-      final unlocked = await _achievementService.checkAndUnlock(
+      // Check if first workout today
+      final today = DateTime.now();
+      final todayStart = DateTime(today.year, today.month, today.day);
+      final isFirstToday = (allWorkouts as List).where((w) {
+        final created = DateTime.parse(w['created_at'] as String);
+        return created.isAfter(todayStart);
+      }).length == 1;
+
+      workoutData['is_first_today'] = isFirstToday;
+
+      // Process gamification
+      final result = await _gamificationService.processWorkout(
         userId: userId,
-        allWorkouts: List<Map<String, dynamic>>.from(workouts as List),
+        workoutData: workoutData,
+        allWorkouts: List<Map<String, dynamic>>.from(allWorkouts),
         inferenceResult: state.inferenceResult,
       );
 
-      if (unlocked.isNotEmpty) {
-        state = state.copyWith(newlyUnlockedAchievements: unlocked);
-        AppLogger.info('🎉 Unlocked ${unlocked.length} achievements');
+      if (result.newBadges.isNotEmpty) {
+        state = state.copyWith(newlyUnlockedAchievements: result.newBadges);
+        AppLogger.info('🎉 Unlocked ${result.newBadges.length} badges');
+      }
+
+      if (result.xpResult.xpAwarded > 0) {
+        AppLogger.info('⭐ Earned ${result.xpResult.xpAwarded} XP');
       }
     } catch (e, stack) {
-      AppLogger.error('❌ Failed to check achievements', e, stack);
+      AppLogger.error('❌ Failed to process gamification', e, stack);
       // Non-critical, continue
     }
   }

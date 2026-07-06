@@ -15,6 +15,7 @@ import '../../features/workout/exercise_detail_page.dart';
 import '../../features/workout/workout_history_page.dart';
 import '../../features/camera/camera_page.dart';
 import '../../features/summary/summary_page.dart';
+import '../../features/achievements/achievements_page.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   // Watch auth state so router rebuilds when auth changes
@@ -149,6 +150,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (c, s) {
           AppLogger.debug('📱 Navigating to: /summary');
           return SummaryPage(result: s.extra as Map<String, dynamic>? ?? const {});
+        },
+      ),
+      GoRoute(
+        path: '/achievements',
+        builder: (c, s) {
+          AppLogger.debug('📱 Navigating to: /achievements');
+          return const AchievementsPage();
         },
       ),
     ],

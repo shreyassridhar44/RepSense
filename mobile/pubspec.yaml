@@ -60,6 +60,7 @@ dependencies:
   image: ^4.2.0
 
   cupertino_icons: ^1.0.8
+  confetti: ^0.8.0
 
 dev_dependencies:
   flutter_test:

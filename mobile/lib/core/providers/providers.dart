@@ -3,7 +3,11 @@ import '../../data/network/dio_client.dart';
 import '../../data/repositories/inference_repository.dart';
 import '../../data/repositories/coach_repository.dart';
 import '../../data/repositories/progress_repository.dart';
+import '../../data/repositories/achievements_repository.dart';
 import '../../data/services/achievement_service.dart';
+import '../../data/services/xp_service.dart';
+import '../../data/services/daily_challenge_service.dart';
+import '../../data/services/gamification_service.dart';
 import '../../data/supabase/supabase_service.dart';
 import '../../features/summary/summary_notifier.dart';
 import '../../features/summary/summary_state.dart';
@@ -13,6 +17,8 @@ import '../../features/coach/services/coach_context_builder.dart';
 import '../../features/coach/services/coach_persistence.dart';
 import '../../features/coach/services/voice_input_service.dart';
 import '../../features/coach/services/image_picker_service.dart';
+import '../../features/achievements/achievements_notifier.dart';
+import '../../features/achievements/achievements_state.dart';
 
 /// Barrel file for all app providers
 export '../../features/auth/auth_provider.dart';
@@ -67,17 +73,53 @@ final imagePickerServiceProvider = Provider<ImagePickerService>((ref) {
   return ImagePickerService();
 });
 
+// XP Service
+final xpServiceProvider = Provider<XpService>((ref) {
+  return XpService();
+});
+
+// Daily Challenge Service
+final dailyChallengeServiceProvider = Provider<DailyChallengeService>((ref) {
+  return DailyChallengeService();
+});
+
 // Achievement Service
 final achievementServiceProvider = Provider<AchievementService>((ref) {
-  return AchievementService();
+  return AchievementService(
+    xpService: ref.watch(xpServiceProvider),
+  );
+});
+
+// Gamification Service
+final gamificationServiceProvider = Provider<GamificationService>((ref) {
+  return GamificationService(
+    xpService: ref.watch(xpServiceProvider),
+    achievementService: ref.watch(achievementServiceProvider),
+    challengeService: ref.watch(dailyChallengeServiceProvider),
+  );
+});
+
+// Achievements Repository
+final achievementsRepositoryProvider = Provider<AchievementsRepository>((ref) {
+  return AchievementsRepository(
+    challengeService: ref.watch(dailyChallengeServiceProvider),
+  );
 });
 
 // Summary Provider
 final summaryProvider = StateNotifierProvider<SummaryNotifier, SummaryState>((ref) {
   return SummaryNotifier(
     inferenceRepository: ref.watch(inferenceRepositoryProvider),
-    achievementService: ref.watch(achievementServiceProvider),
+    gamificationService: ref.watch(gamificationServiceProvider),
     supabase: SupabaseService.instance,
+  );
+});
+
+// Achievements Provider (with userId parameter)
+final achievementsNotifierProvider = StateNotifierProvider.family<AchievementsNotifier, AchievementsState, String>((ref, userId) {
+  return AchievementsNotifier(
+    repository: ref.watch(achievementsRepositoryProvider),
+    userId: userId,
   );
 });
 

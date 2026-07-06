@@ -1,10 +1,18 @@
 import '../../core/utils/app_logger.dart';
 import '../../data/models/inference_models.dart';
 import '../supabase/supabase_service.dart';
+import 'xp_service.dart';
 
 /// Service for checking and unlocking achievements
 class AchievementService {
-  final SupabaseService _supabase = SupabaseService.instance;
+  final SupabaseService _supabase;
+  final XpService _xpService;
+
+  AchievementService({
+    SupabaseService? supabase,
+    XpService? xpService,
+  })  : _supabase = supabase ?? SupabaseService.instance,
+        _xpService = xpService ?? XpService();
 
   /// Check and unlock applicable achievements after a workout
   Future<List<String>> checkAndUnlock({
@@ -79,6 +87,34 @@ class AchievementService {
           !await _hasAchievement(userId, 'consistent')) {
         await _unlockIfNotAlreadyEarned(userId, 'consistent');
         newlyUnlocked.add('consistent');
+      }
+
+      // Level achievements
+      final profile = await _supabase.getProfile(userId);
+      final level = profile?['level'] as int? ?? 1;
+
+      if (level >= 5 && !await _hasAchievement(userId, 'level_5')) {
+        await _unlockIfNotAlreadyEarned(userId, 'level_5');
+        newlyUnlocked.add('level_5');
+      }
+
+      if (level >= 10 && !await _hasAchievement(userId, 'level_10')) {
+        await _unlockIfNotAlreadyEarned(userId, 'level_10');
+        newlyUnlocked.add('level_10');
+      }
+
+      if (level >= 20 && !await _hasAchievement(userId, 'level_20')) {
+        await _unlockIfNotAlreadyEarned(userId, 'level_20');
+        newlyUnlocked.add('level_20');
+      }
+
+      // Award XP for each badge unlocked
+      for (final badge in newlyUnlocked) {
+        await _xpService.awardXp(
+          userId: userId,
+          amount: XpRewards.badgeUnlocked,
+          reason: 'Badge unlocked: $badge',
+        );
       }
 
       if (newlyUnlocked.isNotEmpty) {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/providers/providers.dart';
 import '../../core/theme/app_theme.dart';
 import 'camera_state.dart';
@@ -124,9 +125,22 @@ class _CameraPageState extends ConsumerState<CameraPage> {
         );
 
       case CameraStatus.finished:
-        // Navigate to summary (will be implemented in summary feature)
+        // Navigate to summary with workout data
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          Navigator.of(context).pop(); // For now, just go back
+          if (mounted) {
+            context.go('/summary', extra: {
+              'exerciseId': state.exerciseId,
+              'exerciseName': state.exerciseName,
+              'reps': state.repCount,
+              'correctReps': state.correctReps,
+              'incorrectReps': state.incorrectReps,
+              'repQuality': state.repQuality,
+              'durationSeconds': state.sessionDuration?.inSeconds ?? 0,
+              'estimatedCalories': state.estimatedCalories,
+              'sessionStartTime': state.sessionStartTime?.toIso8601String(),
+              'angleSequence': state.angleSequence,
+            });
+          }
         });
         return const SizedBox.shrink();
     }

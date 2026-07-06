@@ -32,8 +32,39 @@ class RepResultOut(BaseModel):
     issues: list[FormIssueOut]
 
 
+class ScoresBreakdown(BaseModel):
+    range_of_motion: float
+    symmetry: float
+    stability: float
+    tempo: float
+    lockout: float
+    overall: float
+
+
 class AnalyzeSequenceResponse(BaseModel):
     exercise: str
     total_reps: int
     reps: list[RepResultOut]
     avg_score: float
+    scores_breakdown: ScoresBreakdown
+    top_issues: list[FormIssueOut]
+    coaching_summary: str
+
+
+# New schemas for angle-based analysis
+class AnalyzeAnglesRequest(BaseModel):
+    exercise: str
+    frames_angles: list[dict[str, float]]  # Pre-computed angles from mobile
+    duration_seconds: int
+    total_reps_mobile: int
+    rep_quality_mobile: list[bool]
+
+
+class AnalyzeAnglesResponse(BaseModel):
+    exercise: str
+    total_reps: int
+    reps: list[RepResultOut]
+    avg_score: float
+    scores_breakdown: ScoresBreakdown
+    top_issues: list[FormIssueOut]
+    coaching_summary: str

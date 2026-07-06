@@ -1,126 +1,380 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import '../../core/theme/app_colors.dart';
-import '../../shared/widgets/glass_card.dart';
-import '../../shared/widgets/gradient_button.dart';
-import '../../shared/widgets/score_gauge.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/providers/providers.dart';
+import '../../core/theme/app_theme.dart';
+import 'summary_state.dart';
 
-class SummaryPage extends StatelessWidget {
-  const SummaryPage({super.key, required this.result});
+/// Summary page showing workout results and AI analysis
+class SummaryPage extends ConsumerStatefulWidget {
   final Map<String, dynamic> result;
+
+  const SummaryPage({
+    super.key,
+    required this.result,
+  });
+
+  @override
+  ConsumerState<SummaryPage> createState() => _SummaryPageState();
+}
+
+class _SummaryPageState extends ConsumerState<SummaryPage> {
+  @override
+  void initState() {
+    super.initState();
+    
+    // Initialize summary with camera result
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(summaryProvider.notifier).initialize(widget.result);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final reps = result['reps'] ?? 0;
-    final avgScore = (result['avgScore'] ?? 0).toDouble();
+    final state = ref.watch(summaryProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppTheme.richBlack,
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-          children: [
-            Text('Workout Summary', style: Theme.of(context).textTheme.headlineLarge),
-            const SizedBox(height: 4),
-            Text('Here\'s how your set went.', style: Theme.of(context).textTheme.bodyMedium),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(child: _metric(context, '$reps', 'Total Reps')),
-                const SizedBox(width: 12),
-                Expanded(child: _metric(context, '$reps', 'Correct Reps')),
-                const SizedBox(width: 12),
-                Expanded(child: _metric(context, '0', 'Incorrect')),
-              ],
-            ),
-            const SizedBox(height: 16),
-            GlassCard(
-              child: Column(
-                children: [
-                  Text('Form Quality Breakdown', style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 16),
-                  Wrap(
-                    alignment: WrapAlignment.spaceEvenly,
-                    runSpacing: 16,
-                    children: [
-                      ScoreGauge(score: avgScore, label: 'Overall'),
-                      const ScoreGauge(score: 88, label: 'Joint\nAlignment'),
-                      const ScoreGauge(score: 90, label: 'Range of\nMotion'),
-                      const ScoreGauge(score: 85, label: 'Tempo'),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            GlassCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('AI Observations', style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 12),
-                  _observation(context, 'Your knees moved inward on reps 4 and 7.',
-                      'This increases knee stress. Try pushing your knees outward.', 'Moderate'),
-                  const Divider(height: 24),
-                  _observation(context, 'Depth was excellent throughout the set.',
-                      'Full range of motion improves muscle activation.', 'Good'),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.ios_share_rounded, size: 18),
-                    label: const Text('Share'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: GradientButton(
-                    label: 'Done',
-                    onPressed: () => context.go('/home'),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+        child: _buildBody(context, state),
       ),
     );
   }
 
-  Widget _metric(BuildContext context, String value, String label) {
-    return GlassCard(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Column(
+  Widget _buildBody(BuildContext context, SummaryState state) {
+    return CustomScrollView(
+      slivers: [
+        // App bar
+        SliverAppBar(
+          backgroundColor: AppTheme.richBlack,
+          title: Text(
+            state.exerciseName,
+            style: const TextStyle(color: AppTheme.platinum),
+          ),
+          leading: IconButton(
+            icon: const Icon(Icons.close, color: AppTheme.platinum),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ),
+
+        // Content
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Analyzing banner
+                if (state.status == SummaryStatus.analyzing)
+                  _buildAnalyzingBanner(),
+
+                const SizedBox(height: 16),
+
+                // Basic stats (always visible)
+                _buildBasicStats(state),
+
+                const SizedBox(height: 16),
+
+                // Score display
+                _buildScoreDisplay(state),
+
+                const SizedBox(height: 16),
+
+                // Rep quality
+                if (state.repQuality.isNotEmpty) _buildRepQuality(state),
+
+                const SizedBox(height: 16),
+
+                // Action buttons
+                _buildActionButtons(context, state),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAnalyzingBanner() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.electricBlue.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.electricBlue),
+      ),
+      child: const Column(
         children: [
-          Text(value, style: Theme.of(context).textTheme.headlineMedium),
-          const SizedBox(height: 4),
-          Text(label, style: Theme.of(context).textTheme.bodyMedium, textAlign: TextAlign.center),
+          Row(
+            children: [
+              Icon(Icons.psychology, color: AppTheme.electricBlue),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  '🧠 AI is analyzing your form…',
+                  style: TextStyle(
+                    color: AppTheme.platinum,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12),
+          LinearProgressIndicator(
+            color: AppTheme.electricBlue,
+            backgroundColor: AppTheme.charcoal,
+          ),
         ],
       ),
     );
   }
 
-  Widget _observation(BuildContext context, String problem, String correction, String severity) {
-    final color = severity == 'Good' ? AppColors.emerald : AppColors.amber;
+  Widget _buildBasicStats(SummaryState state) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(Icons.circle, size: 8, color: color),
-        const SizedBox(width: 10),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(problem, style: Theme.of(context).textTheme.bodyLarge),
-              const SizedBox(height: 4),
-              Text(correction, style: Theme.of(context).textTheme.bodyMedium),
-            ],
+          child: _buildStatCard(
+            'Total Reps',
+            state.totalReps.toString(),
+            AppTheme.electricBlue,
           ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _buildStatCard(
+            'Correct',
+            state.correctReps.toString(),
+            AppTheme.emerald,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _buildStatCard(
+            'Incorrect',
+            state.incorrectReps > 0 ? state.incorrectReps.toString() : '—',
+            AppTheme.error,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatCard(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.charcoal.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: AppTheme.platinum.withOpacity(0.7),
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildScoreDisplay(SummaryState state) {
+    final score = state.displayScore;
+    final color = state.inferenceResult?.scoreColor ?? AppTheme.electricBlue;
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppTheme.charcoal.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            'Form Score',
+            style: TextStyle(
+              color: AppTheme.platinum.withOpacity(0.7),
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '${score.toStringAsFixed(1)}',
+            style: TextStyle(
+              color: color,
+              fontSize: 64,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            state.inferenceResult?.scoreLabel ?? 'Basic Score',
+            style: TextStyle(
+              color: color,
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          if (state.status == SummaryStatus.analyzing)
+            const Padding(
+              padding: EdgeInsets.only(top: 12),
+              child: Text(
+                'Detailed analysis in progress...',
+                style: TextStyle(
+                  color: AppTheme.platinum,
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRepQuality(SummaryState state) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.charcoal.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Rep Quality',
+            style: TextStyle(
+              color: AppTheme.platinum,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: state.repQuality.asMap().entries.map((entry) {
+              final index = entry.key;
+              final isCorrect = entry.value;
+              return Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isCorrect ? AppTheme.emerald : AppTheme.error,
+                ),
+                child: Center(
+                  child: Text(
+                    '${index + 1}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButtons(BuildContext context, SummaryState state) {
+    return Column(
+      children: [
+        // Save error banner
+        if (state.saveErrorMessage != null)
+          Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppTheme.error.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppTheme.error),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.error_outline, color: AppTheme.error),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Workout not saved — ${state.saveErrorMessage}',
+                    style: const TextStyle(color: AppTheme.platinum),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    ref.read(summaryProvider.notifier).retrySave();
+                  },
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+
+        // Saved confirmation
+        if (state.isSaved)
+          const Padding(
+            padding: EdgeInsets.only(bottom: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.check_circle, color: AppTheme.emerald, size: 16),
+                SizedBox(width: 6),
+                Text(
+                  'Saved to your history',
+                  style: TextStyle(color: AppTheme.emerald, fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+
+        // Main buttons
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () {
+                  // TODO: Implement share
+                },
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppTheme.electricBlue),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: const Text('Share'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.electricBlue,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: const Text('Done'),
+              ),
+            ),
+          ],
         ),
       ],
     );

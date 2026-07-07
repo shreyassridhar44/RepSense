@@ -16,6 +16,16 @@ import '../../features/workout/workout_history_page.dart';
 import '../../features/camera/camera_page.dart';
 import '../../features/summary/summary_page.dart';
 import '../../features/achievements/achievements_page.dart';
+import '../../features/profile/profile_page.dart';
+import '../../features/profile/edit/edit_personal_info_page.dart';
+import '../../features/profile/edit/edit_measurements_page.dart';
+import '../../features/profile/settings/notification_settings_page.dart';
+import '../../features/profile/settings/privacy_settings_page.dart';
+import '../../features/profile/settings/ai_preferences_page.dart';
+import '../../features/profile/account/change_password_page.dart';
+import '../../features/profile/account/change_email_page.dart';
+import '../../features/profile/account/delete_account_page.dart';
+import '../../features/profile/support/feedback_page.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   // Watch auth state so router rebuilds when auth changes
@@ -157,6 +167,76 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (c, s) {
           AppLogger.debug('📱 Navigating to: /achievements');
           return const AchievementsPage();
+        },
+      ),
+      GoRoute(
+        path: '/profile',
+        builder: (c, s) {
+          AppLogger.debug('📱 Navigating to: /profile');
+          return const ProfilePage();
+        },
+      ),
+      GoRoute(
+        path: '/profile/edit/personal',
+        builder: (c, s) {
+          AppLogger.debug('📱 Navigating to: /profile/edit/personal');
+          return const EditPersonalInfoPage();
+        },
+      ),
+      GoRoute(
+        path: '/profile/edit/measurements',
+        builder: (c, s) {
+          AppLogger.debug('📱 Navigating to: /profile/edit/measurements');
+          return const EditMeasurementsPage();
+        },
+      ),
+      GoRoute(
+        path: '/profile/settings/notifications',
+        builder: (c, s) {
+          AppLogger.debug('📱 Navigating to: /profile/settings/notifications');
+          return const NotificationSettingsPage();
+        },
+      ),
+      GoRoute(
+        path: '/profile/settings/privacy',
+        builder: (c, s) {
+          AppLogger.debug('📱 Navigating to: /profile/settings/privacy');
+          return const PrivacySettingsPage();
+        },
+      ),
+      GoRoute(
+        path: '/profile/settings/ai',
+        builder: (c, s) {
+          AppLogger.debug('📱 Navigating to: /profile/settings/ai');
+          return const AiPreferencesPage();
+        },
+      ),
+      GoRoute(
+        path: '/profile/account/change-password',
+        builder: (c, s) {
+          AppLogger.debug('📱 Navigating to: /profile/account/change-password');
+          return const ChangePasswordPage();
+        },
+      ),
+      GoRoute(
+        path: '/profile/account/change-email',
+        builder: (c, s) {
+          AppLogger.debug('📱 Navigating to: /profile/account/change-email');
+          return const ChangeEmailPage();
+        },
+      ),
+      GoRoute(
+        path: '/profile/account/delete',
+        builder: (c, s) {
+          AppLogger.debug('📱 Navigating to: /profile/account/delete');
+          return const DeleteAccountPage();
+        },
+      ),
+      GoRoute(
+        path: '/profile/support/feedback',
+        builder: (c, s) {
+          AppLogger.debug('📱 Navigating to: /profile/support/feedback');
+          return const FeedbackPage();
         },
       ),
     ],

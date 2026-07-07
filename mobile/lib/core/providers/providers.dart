@@ -4,6 +4,7 @@ import '../../data/repositories/inference_repository.dart';
 import '../../data/repositories/coach_repository.dart';
 import '../../data/repositories/progress_repository.dart';
 import '../../data/repositories/achievements_repository.dart';
+import '../../data/repositories/profile_repository.dart';
 import '../../data/services/achievement_service.dart';
 import '../../data/services/xp_service.dart';
 import '../../data/services/daily_challenge_service.dart';
@@ -19,6 +20,8 @@ import '../../features/coach/services/voice_input_service.dart';
 import '../../features/coach/services/image_picker_service.dart';
 import '../../features/achievements/achievements_notifier.dart';
 import '../../features/achievements/achievements_state.dart';
+import '../../features/profile/profile_notifier.dart';
+import '../../features/profile/profile_state.dart';
 
 /// Barrel file for all app providers
 export '../../features/auth/auth_provider.dart';
@@ -120,6 +123,20 @@ final achievementsNotifierProvider = StateNotifierProvider.family<AchievementsNo
   return AchievementsNotifier(
     repository: ref.watch(achievementsRepositoryProvider),
     userId: userId,
+  );
+});
+
+// Profile Repository
+final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
+  return ProfileRepository();
+});
+
+// Profile Provider (with userId parameter)
+final profileNotifierProvider = StateNotifierProvider.family<ProfileNotifier, ProfileState, String>((ref, userId) {
+  return ProfileNotifier(
+    repository: ref.watch(profileRepositoryProvider),
+    userId: userId,
+    imagePickerService: ref.watch(imagePickerServiceProvider),
   );
 });
 

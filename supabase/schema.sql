@@ -280,6 +280,25 @@ alter table public.profiles
   add column if not exists xp_this_week integer not null default 0,
   add column if not exists xp_week_start date;
 
+-- Add Module 9 profile settings columns (safe if columns exist)
+alter table public.profiles
+  add column if not exists avatar_url text,
+  add column if not exists date_of_birth date,
+  add column if not exists biological_sex text,
+  add column if not exists notification_workout_reminder boolean not null default true,
+  add column if not exists notification_streak_reminder boolean not null default true,
+  add column if not exists notification_achievement boolean not null default true,
+  add column if not exists notification_weekly_summary boolean not null default true,
+  add column if not exists notification_reminder_time time default '19:00:00',
+  add column if not exists privacy_share_progress boolean not null default false,
+  add column if not exists privacy_appear_on_leaderboard boolean not null default true,
+  add column if not exists voice_guidance_enabled boolean not null default true,
+  add column if not exists camera_quality text not null default 'medium',
+  add column if not exists inference_mode text not null default 'auto',
+  add column if not exists language text not null default 'en',
+  add column if not exists onboarding_completed boolean not null default false,
+  add column if not exists last_seen_at timestamptz;
+
 alter table public.profiles enable row level security;
 
 do $$
@@ -572,6 +591,11 @@ insert into storage.buckets (id, name, public)
 values ('workout-media', 'workout-media', false)
 on conflict (id) do nothing;
 
+-- Module 9: Avatar storage bucket
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true)
+on conflict (id) do nothing;
+
 do $$
 begin
   if not exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'Users can upload their own workout media') then
@@ -592,4 +616,194 @@ begin
         and (storage.foldername(name))[2] = auth.uid()::text
       );
   end if;
+  
+  -- Avatar storage policies
+  if not exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'Users can upload their own avatar') then
+    create policy "Users can upload their own avatar"
+      on storage.objects for insert
+      with check (
+        bucket_id = 'avatars' 
+        and name = auth.uid()::text || '.jpg'
+      );
+  end if;
+  if not exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'Users can update their own avatar') then
+    create policy "Users can update their own avatar"
+      on storage.objects for update
+      using (
+        bucket_id = 'avatars' 
+        and name = auth.uid()::text || '.jpg'
+      );
+  end if;
+  if not exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'Anyone can read avatars') then
+    create policy "Anyone can read avatars"
+      on storage.objects for select
+      using (bucket_id = 'avatars');
+  end if;
 end $$;
+
+-- ----------------------------------------------------------------------------
+-- 12. MODULE 9: DATA EXPORT REQUESTS (GDPR compliance)
+-- ----------------------------------------------------------------------------
+create table if not exists public.data_export_requests (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  requested_at timestamptz not null default now(),
+  status text not null default 'pending',
+  download_url text,
+  expires_at timestamptz
+);
+
+alter table public.data_export_requests enable row level security;
+
+do $$
+begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'data_export_requests' and policyname = 'Users manage their own export requests') then
+    create policy "Users manage their own export requests"
+      on public.data_export_requests for all
+      using (auth.uid() = user_id);
+  end if;
+end $$;
+
+-- ----------------------------------------------------------------------------
+-- 13. MODULE 9: FEEDBACK SUBMISSIONS
+-- ----------------------------------------------------------------------------
+create table if not exists public.feedback (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete set null,
+  category text not null,
+  message text not null,
+  app_version text,
+  device_info text,
+  created_at timestamptz not null default now()
+);
+
+alter table public.feedback enable row level security;
+
+do $$
+begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'feedback' and policyname = 'Users can submit feedback') then
+    create policy "Users can submit feedback"
+      on public.feedback for insert
+      with check (auth.uid() = user_id);
+  end if;
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'feedback' and policyname = 'Users can view their own feedback') then
+    create policy "Users can view their own feedback"
+      on public.feedback for select
+      using (auth.uid() = user_id);
+  end if;
+end $$;
+
+-- ----------------------------------------------------------------------------
+-- 14. MODULE 9: LEADERBOARD VISIBILITY
+-- ----------------------------------------------------------------------------
+alter table public.leaderboard_weekly
+  add column if not exists is_hidden boolean not null default false;
+
+-- Update leaderboard policy to respect is_hidden
+do $$
+begin
+  -- Drop old policy if it exists
+  if exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'leaderboard_weekly' and policyname = 'Anyone can read leaderboard') then
+    drop policy "Anyone can read leaderboard" on public.leaderboard_weekly;
+  end if;
+  
+  -- Create new policy that respects is_hidden
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'leaderboard_weekly' and policyname = 'Anyone can read visible leaderboard entries') then
+    create policy "Anyone can read visible leaderboard entries"
+      on public.leaderboard_weekly for select
+      using (is_hidden = false or auth.uid() = user_id);
+  end if;
+end $$;
+
+-- ----------------------------------------------------------------------------
+-- 15. MODULE 9: CONSTRAINT CHECKS
+-- ----------------------------------------------------------------------------
+
+-- Add check constraints for enum-like fields in profiles
+do $$
+begin
+  -- Camera quality check
+  if not exists (
+    select 1 from pg_constraint 
+    where conname = 'profiles_camera_quality_check'
+  ) then
+    alter table public.profiles
+      add constraint profiles_camera_quality_check
+      check (camera_quality in ('low', 'medium', 'high'));
+  end if;
+
+  -- Inference mode check
+  if not exists (
+    select 1 from pg_constraint 
+    where conname = 'profiles_inference_mode_check'
+  ) then
+    alter table public.profiles
+      add constraint profiles_inference_mode_check
+      check (inference_mode in ('cloud', 'ondevice', 'auto'));
+  end if;
+
+  -- Biological sex check
+  if not exists (
+    select 1 from pg_constraint 
+    where conname = 'profiles_biological_sex_check'
+  ) then
+    alter table public.profiles
+      add constraint profiles_biological_sex_check
+      check (biological_sex in ('male', 'female', 'prefer_not_to_say'));
+  end if;
+  
+  -- Data export status check
+  if not exists (
+    select 1 from pg_constraint 
+    where conname = 'data_export_status_check'
+  ) then
+    alter table public.data_export_requests
+      add constraint data_export_status_check
+      check (status in ('pending', 'ready', 'downloaded'));
+  end if;
+  
+  -- Feedback category check
+  if not exists (
+    select 1 from pg_constraint 
+    where conname = 'feedback_category_check'
+  ) then
+    alter table public.feedback
+      add constraint feedback_category_check
+      check (category in ('bug', 'feature', 'general', 'ai_feedback'));
+  end if;
+end $$;
+
+-- ----------------------------------------------------------------------------
+-- 16. MODULE 9: PERFORMANCE INDEXES
+-- ----------------------------------------------------------------------------
+
+-- Index for last_seen_at queries
+create index if not exists idx_profiles_last_seen_at
+  on public.profiles (last_seen_at desc);
+
+-- Index for feedback queries
+create index if not exists idx_feedback_created_at
+  on public.feedback (created_at desc);
+
+-- Index for data export requests
+create index if not exists idx_data_export_requests_user_id
+  on public.data_export_requests (user_id, requested_at desc);
+
+-- Index for leaderboard with is_hidden
+create index if not exists idx_leaderboard_weekly_visible
+  on public.leaderboard_weekly (week_start, xp_this_week desc, is_hidden);
+
+-- ============================================================================
+-- SCHEMA COMPLETE - ALL MODULES INCLUDED
+-- ============================================================================
+-- This schema includes:
+-- - Module 1: Auth & Profiles
+-- - Module 2: Home Dashboard
+-- - Module 3: Workouts & Exercises  
+-- - Module 5: Camera & AI
+-- - Module 8: Gamification (Achievements, Challenges, Leaderboard)
+-- - Module 9: Profile & Settings (complete)
+--
+-- Safe to run multiple times - won't delete existing data
+-- All operations use "if not exists" or "add column if not exists"
+-- ============================================================================

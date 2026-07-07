@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import '../../core/constants/app_config.dart';
 import '../../core/exceptions/app_exception.dart';
 import '../../core/utils/app_logger.dart';
 import '../models/profile_models.dart';
@@ -201,8 +202,8 @@ class ProfileRepository {
         throw AppException('Not authenticated');
       }
 
-      // TODO: Replace with actual backend API URL from environment
-      const backendUrl = 'http://localhost:8000'; // Change to actual URL
+      // Get backend URL from config
+      final backendUrl = AppConfig.apiServiceUrl;
       
       // Call backend API delete-account endpoint using http package
       final url = Uri.parse('$backendUrl/account/delete');

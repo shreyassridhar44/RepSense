@@ -3,10 +3,7 @@ uvicorn[standard]==0.30.6
 pydantic==2.9.2
 pydantic-settings==2.5.2
 
-# ML pipeline (server-side fallback / deeper analysis).
-# Mobile client runs ML Kit / MediaPipe on-device for low latency;
-# this service mirrors the same pose pipeline for cloud-side re-analysis,
-# model upgrades, and exercises too heavy to run on-device.
-mediapipe==0.10.14
+# ML pipeline - Updated to latest compatible versions
+mediapipe==0.10.35
 opencv-python-headless==4.10.0.84
-numpy==1.26.4
+numpy==2.0.0

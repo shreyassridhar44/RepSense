@@ -63,7 +63,7 @@ class _ChangeEmailPageState extends ConsumerState<ChangeEmailPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'You signed in with Google/Apple — email management is handled by your sign-in provider.',
+                  'You signed in with Google — email management is handled by your sign-in provider.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 13,

@@ -80,18 +80,6 @@ class SupabaseService {
     }
   }
 
-  Future<bool> signInWithApple() async {
-    try {
-      AppLogger.info('🔐 Attempting Apple sign in');
-      final result = await client.auth.signInWithOAuth(OAuthProvider.apple);
-      AppLogger.info('✅ Apple sign in initiated: $result');
-      return result;
-    } catch (e, stack) {
-      AppLogger.error('❌ Apple sign in failed', e, stack);
-      rethrow;
-    }
-  }
-
   Future<void> signOut() async {
     try {
       final userId = currentUser?.id;

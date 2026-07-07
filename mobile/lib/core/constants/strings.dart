@@ -10,7 +10,6 @@ class AppStrings {
   static const String confirmPassword = 'Confirm Password';
   static const String forgotPassword = 'Forgot password?';
   static const String continueWithGoogle = 'Continue with Google';
-  static const String continueWithApple = 'Continue with Apple';
   static const String continueAsGuest = 'Continue as Guest';
   static const String orContinueWith = 'Or continue with';
   

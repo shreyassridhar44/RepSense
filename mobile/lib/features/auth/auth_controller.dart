@@ -153,24 +153,6 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
-  Future<bool> signInWithApple() async {
-    AppLogger.info('👤 AuthController: Starting Apple sign in');
-    
-    try {
-      await _service.signInWithApple();
-      AppLogger.info('✅ AuthController: Apple sign in successful');
-      
-      // Refresh profile completeness check
-      ref.read(profileCompletenessProvider.notifier).refresh();
-      
-      return true;
-    } catch (e, stack) {
-      AppLogger.error('❌ AuthController: Apple sign in failed', e, stack);
-      state = AuthState(status: AuthStatus.error, errorMessage: AppStrings.genericError);
-      return false;
-    }
-  }
-
   Future<void> sendPasswordReset(String email) async {
     AppLogger.info('👤 AuthController: Sending password reset for: $email');
     

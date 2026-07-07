@@ -224,15 +224,6 @@ class _AuthPageState extends ConsumerState<AuthPage> with SingleTickerProviderSt
     }
   }
 
-  Future<void> _handleAppleSignIn() async {
-    final controller = ref.read(authControllerProvider.notifier);
-    final success = await controller.signInWithApple();
-    
-    if (success && mounted) {
-      AppLogger.info('✅ Apple sign in successful, router will handle redirect');
-    }
-  }
-
   Future<void> _handleGuestMode() async {
     await ref.read(authControllerProvider.notifier).continueAsGuest();
     if (mounted) {
@@ -357,18 +348,6 @@ class _AuthPageState extends ConsumerState<AuthPage> with SingleTickerProviderSt
                 onPressed: isLoading ? null : _handleGoogleSignIn,
                 icon: const Icon(Icons.g_mobiledata_rounded, size: 26),
                 label: const Text(AppStrings.continueWithGoogle),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-              ),
-              
-              const SizedBox(height: 12),
-              
-              // Apple Sign In
-              OutlinedButton.icon(
-                onPressed: isLoading ? null : _handleAppleSignIn,
-                icon: const Icon(Icons.apple_rounded, size: 22),
-                label: const Text(AppStrings.continueWithApple),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),

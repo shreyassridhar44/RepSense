@@ -5,8 +5,7 @@ Handles account deletion with service role privileges
 from fastapi import APIRouter, HTTPException, Depends, Header
 from supabase import Client
 from typing import Optional
-import os
-from ...db.supabase_client import get_supabase_client
+from ...db.supabase_client import get_supabase
 
 router = APIRouter(prefix="/account", tags=["account"])
 
@@ -14,7 +13,7 @@ router = APIRouter(prefix="/account", tags=["account"])
 @router.delete("/delete")
 async def delete_account(
     authorization: Optional[str] = Header(None),
-    supabase: Client = Depends(get_supabase_client)
+    supabase: Client = Depends(get_supabase)
 ):
     """
     Delete user account completely (GDPR compliance)

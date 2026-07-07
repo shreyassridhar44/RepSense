@@ -34,7 +34,7 @@ class PendingOperationsQueue {
   /// Get all pending operations
   static List<PendingOperation> getAll() {
     try {
-      if (_box == null) return [];
+      if (_box == null || !_box!.isOpen) return [];
       return _box!.values
           .map((json) => PendingOperation.fromJson(Map<String, dynamic>.from(json)))
           .toList()

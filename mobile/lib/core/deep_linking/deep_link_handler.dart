@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uni_links/uni_links.dart';
 import 'dart:async';
-import '../monitoring/analytics_service.dart';
 
 /// Deep linking handler for RepSense
 /// Supports:
@@ -48,16 +47,9 @@ class DeepLinkHandler {
 
   /// Handle a deep link
   static void _handleDeepLink(String link, GoRouter router) {
-    AnalyticsService.logFeatureUsed('deep_link_opened');
-
     final uri = Uri.parse(link);
 
     // Remove the scheme and host to get the path
-    // Examples:
-    // - https://repsense.app/workouts/123 -> /workouts/123
-    // - repsense://workouts/123 -> /workouts/123
-    // - repsense://share?code=ABC123 -> /share?code=ABC123
-
     String path = uri.path;
     if (path.isEmpty) path = '/';
 

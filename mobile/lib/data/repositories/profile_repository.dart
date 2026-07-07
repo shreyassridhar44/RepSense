@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:http/http.dart' as http;
 import '../../core/exceptions/app_exception.dart';
 import '../../core/utils/app_logger.dart';
 import '../models/profile_models.dart';
@@ -200,17 +201,25 @@ class ProfileRepository {
         throw AppException('Not authenticated');
       }
 
-      // Call backend API delete-account endpoint
-      final response = await _dio.delete(
-        '/account/delete',
-        options: Options(
-          headers: {'Authorization': 'Bearer ${session.accessToken}'},
-        ),
+      // TODO: Replace with actual backend API URL from environment
+      const backendUrl = 'http://localhost:8000'; // Change to actual URL
+      
+      // Call backend API delete-account endpoint using http package
+      final url = Uri.parse('$backendUrl/account/delete');
+      final response = await http.delete(
+        url,
+        headers: {
+          'Authorization': 'Bearer ${session.accessToken}',
+          'Content-Type': 'application/json',
+        },
       );
 
       if (response.statusCode != 200) {
-        throw AppException('Account deletion failed');
+        throw AppException('Account deletion failed: ${response.body}');
       }
+
+      // Sign out after successful deletion
+      await _supabase.client.auth.signOut();
 
       AppLogger.info('✅ Account deleted successfully');
     } catch (e, stack) {

@@ -28,6 +28,7 @@ class CacheService {
 
   static Future<void> cacheExercises(List<Map<String, dynamic>> exercises) async {
     try {
+      if (!Hive.isBoxOpen(_exercisesBox)) await Hive.openBox(_exercisesBox);
       final box = Hive.box(_exercisesBox);
       await box.put('all_exercises', exercises);
       await box.put('last_sync', DateTime.now().toIso8601String());
@@ -38,6 +39,7 @@ class CacheService {
 
   static List<Map<String, dynamic>>? getCachedExercises() {
     try {
+      if (!Hive.isBoxOpen(_exercisesBox)) return null;
       final box = Hive.box(_exercisesBox);
       final cached = box.get('all_exercises');
       if (cached != null) {

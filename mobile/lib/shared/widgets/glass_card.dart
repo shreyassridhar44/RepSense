@@ -10,12 +10,14 @@ class GlassCard extends StatelessWidget {
     this.padding = const EdgeInsets.all(20),
     this.borderRadius = 24,
     this.onTap,
+    this.gradient,
   });
 
   final Widget child;
   final EdgeInsets padding;
   final double borderRadius;
   final VoidCallback? onTap;
+  final Gradient? gradient;
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +30,7 @@ class GlassCard extends StatelessWidget {
           child: Container(
             padding: padding,
             decoration: BoxDecoration(
-              gradient: AppColors.glassGradient,
+              gradient: gradient ?? AppColors.glassGradient,
               borderRadius: BorderRadius.circular(borderRadius),
               border: Border.all(color: Colors.white.withOpacity(0.08)),
               boxShadow: [

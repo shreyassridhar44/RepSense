@@ -74,7 +74,7 @@ class AchievementsState {
     );
   }
 
-  int get userRank => currentUserEntry.rank;
+  int get userRank => currentUserEntry?.rank ?? 0;
 
   bool get hasTodaysChallenge => todaysChallenge != null;
   bool get isChallengeCompleted => todaysChallenge?.isCompleted ?? false;

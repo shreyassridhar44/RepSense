@@ -5,6 +5,23 @@ import 'app_typography.dart';
 class AppTheme {
   AppTheme._();
 
+  // Direct color accessors for convenience
+  static const Color emerald = AppColors.emerald;
+  static const Color electricBlue = AppColors.electricBlue;
+  static const Color amber = AppColors.amber;
+  static const Color error = AppColors.error;
+  static const Color errorRed = AppColors.errorRed;
+  static const Color success = AppColors.success;
+  static const Color warning = AppColors.warning;
+  static const Color backgroundLight = AppColors.backgroundLight;
+  static const Color backgroundDark = AppColors.backgroundDark;
+  static const Color surfaceDark = AppColors.surfaceDark;
+  static const Color richBlack = AppColors.richBlack;
+  static const Color charcoal = AppColors.charcoal;
+  static const Color platinum = AppColors.platinum;
+  static const Color violet = AppColors.violet;
+  static const LinearGradient primaryGradient = AppColors.primaryGradient;
+
   static ThemeData get darkTheme {
     final base = ThemeData.dark(useMaterial3: true);
     return base.copyWith(

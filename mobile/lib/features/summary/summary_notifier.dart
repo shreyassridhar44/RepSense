@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/exceptions/app_exception.dart';
-import '../../core/utils/app_logger.dart';
-import '../../core/utils/angle_utils.dart';
-import '../../data/models/inference_models.dart';
-import '../../data/repositories/inference_repository.dart';
-import '../../data/services/gamification_service.dart';
-import '../../data/supabase/supabase_service.dart';
+import 'package:repsense/core/utils/app_exception.dart';
+import 'package:repsense/core/utils/app_logger.dart';
+import 'package:repsense/core/utils/angle_utils.dart';
+import 'package:repsense/data/models/inference_models.dart';
+import 'package:repsense/data/repositories/inference_repository.dart';
+import 'package:repsense/data/services/gamification_service.dart';
+import 'package:repsense/data/supabase/supabase_service.dart';
 import 'summary_state.dart';
 
 /// Summary notifier - orchestrates inference, save, and gamification
@@ -22,7 +22,7 @@ class SummaryNotifier extends StateNotifier<SummaryState> {
   })  : _inferenceRepository = inferenceRepository,
         _gamificationService = gamificationService,
         _supabase = supabase,
-        super(const SummaryState());
+        super(SummaryState(sessionStartTime: DateTime.now()));
 
   /// Initialize with camera result data
   Future<void> initialize(Map<String, dynamic> cameraResult) async {
@@ -151,10 +151,10 @@ class SummaryNotifier extends StateNotifier<SummaryState> {
 
       final user = _supabase.currentUser;
       if (user == null) {
-        throw AppException('User not authenticated');
+        throw AppException(message: 'User not authenticated');
       }
 
-      final basicScore = state._basicScore;
+      final basicScore = state.displayScore;
 
       final response = await _supabase.client.from('workouts').insert({
         'user_id': user.id,

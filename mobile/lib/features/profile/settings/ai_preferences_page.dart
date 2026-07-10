@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/glass_card.dart';
+import '../../../shared/widgets/glass_card.dart';
 
 /// AI and Camera preferences screen
 class AiPreferencesPage extends ConsumerStatefulWidget {
@@ -15,7 +15,7 @@ class AiPreferencesPage extends ConsumerStatefulWidget {
 class _AiPreferencesPageState extends ConsumerState<AiPreferencesPage> {
   @override
   Widget build(BuildContext context) {
-    final userId = ref.watch(authProvider).currentUser?.id;
+    final userId = ref.watch(currentUserProvider)?.id;
     if (userId == null) return const Scaffold(body: Center(child: Text('Not authenticated')));
 
     final state = ref.watch(profileNotifierProvider(userId));
@@ -310,7 +310,7 @@ class _AiPreferencesPageState extends ConsumerState<AiPreferencesPage> {
   }
 
   Future<void> _updateQuality(String quality, dynamic notifier) async {
-    final userId = ref.read(authProvider).currentUser?.id;
+    final userId = ref.read(currentUserProvider)?.id;
     if (userId == null) return;
     
     final state = ref.read(profileNotifierProvider(userId));
@@ -320,7 +320,7 @@ class _AiPreferencesPageState extends ConsumerState<AiPreferencesPage> {
   }
 
   Future<void> _updateMode(String mode, dynamic notifier) async {
-    final userId = ref.read(authProvider).currentUser?.id;
+    final userId = ref.read(currentUserProvider)?.id;
     if (userId == null) return;
     
     notifier.setInferenceMode(mode);

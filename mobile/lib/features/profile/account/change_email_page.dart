@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/glass_card.dart';
-import '../../../core/widgets/gradient_button.dart';
+import '../../../shared/widgets/glass_card.dart';
+import '../../../shared/widgets/gradient_button.dart';
 
 /// Change email screen
 class ChangeEmailPage extends ConsumerStatefulWidget {
@@ -33,7 +33,7 @@ class _ChangeEmailPageState extends ConsumerState<ChangeEmailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(authProvider).currentUser;
+    final user = ref.watch(currentUserProvider);
     final isOAuthUser = user?.appMetadata?['provider'] != 'email';
 
     if (isOAuthUser) {
@@ -366,7 +366,7 @@ class _ChangeEmailPageState extends ConsumerState<ChangeEmailPage> {
     });
 
     try {
-      final userId = ref.read(authProvider).currentUser?.id;
+      final userId = ref.read(currentUserProvider)?.id;
       if (userId == null) throw Exception('Not authenticated');
 
       await ref.read(profileNotifierProvider(userId).notifier).changeEmail(
@@ -398,7 +398,7 @@ class _ChangeEmailPageState extends ConsumerState<ChangeEmailPage> {
 
   Future<void> _resendEmail() async {
     try {
-      final userId = ref.read(authProvider).currentUser?.id;
+      final userId = ref.read(currentUserProvider)?.id;
       if (userId == null) return;
 
       await ref.read(profileNotifierProvider(userId).notifier).changeEmail(

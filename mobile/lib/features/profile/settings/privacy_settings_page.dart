@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/glass_card.dart';
+import '../../../shared/widgets/glass_card.dart';
+import '../profile_state.dart';
 
 /// Privacy settings screen
 class PrivacySettingsPage extends ConsumerStatefulWidget {
@@ -34,7 +35,7 @@ class _PrivacySettingsPageState extends ConsumerState<PrivacySettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final userId = ref.watch(authProvider).currentUser?.id;
+    final userId = ref.watch(currentUserProvider)?.id;
     if (userId == null) return const Scaffold(body: Center(child: Text('Not authenticated')));
 
     final state = ref.watch(profileNotifierProvider(userId));

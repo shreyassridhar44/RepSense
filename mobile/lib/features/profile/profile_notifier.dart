@@ -6,28 +6,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:gotrue/gotrue.dart' as gotrueUserAttributes;
 import 'dart:io' show Platform;
 import '../../core/utils/app_logger.dart';
 import '../../data/models/profile_models.dart';
 import '../../data/repositories/profile_repository.dart';
 import '../../data/supabase/supabase_service.dart';
-import '../coach/services/image_picker_service.dart';
 import 'profile_state.dart';
 
 /// Notifier for profile and settings management
 class ProfileNotifier extends StateNotifier<ProfileState> {
   final ProfileRepository _repository;
   final String _userId;
-  final ImagePickerService _imagePickerService;
+  final ImagePicker _imagePicker = ImagePicker();
   Timer? _debounceTimer;
 
   ProfileNotifier({
     required ProfileRepository repository,
     required String userId,
-    ImagePickerService? imagePickerService,
   })  : _repository = repository,
         _userId = userId,
-        _imagePickerService = imagePickerService ?? ImagePickerService(),
         super(const ProfileState());
 
   @override
@@ -337,11 +335,13 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
       AppLogger.info('📸 Picking avatar from $source');
 
       // Pick image
-      final imageBytes = await _imagePickerService.pickAndProcessImage(source);
-      if (imageBytes == null) {
+      final XFile? file = await _imagePicker.pickImage(source: source);
+      if (file == null) {
         state = state.copyWith(isUploadingAvatar: false);
         return;
       }
+      
+      final imageBytes = await file.readAsBytes();
 
       // Show preview immediately
       final base64 = base64Encode(imageBytes);
@@ -398,7 +398,7 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
 
       // Update password
       await SupabaseService.instance.client.auth.updateUser(
-        UserAttributes(password: newPassword),
+        gotrueUserAttributes.UserAttributes(password: newPassword),
       );
 
       AppLogger.info('✅ Password changed');
@@ -426,7 +426,7 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
 
       // Update email (requires confirmation)
       await SupabaseService.instance.client.auth.updateUser(
-        UserAttributes(email: newEmail),
+        gotrueUserAttributes.UserAttributes(email: newEmail),
       );
 
       AppLogger.info('✅ Confirmation email sent');

@@ -4,7 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/glass_card.dart';
+import '../../../shared/widgets/glass_card.dart';
+import '../profile_state.dart';
 
 /// Account deletion confirmation screen
 class DeleteAccountPage extends ConsumerStatefulWidget {
@@ -26,7 +27,7 @@ class _DeleteAccountPageState extends ConsumerState<DeleteAccountPage> {
 
   @override
   Widget build(BuildContext context) {
-    final userId = ref.watch(authProvider).currentUser?.id;
+    final userId = ref.watch(currentUserProvider)?.id;
     if (userId == null) return const Scaffold(body: Center(child: Text('Not authenticated')));
 
     final state = ref.watch(profileNotifierProvider(userId));
@@ -381,7 +382,7 @@ class _DeleteAccountPageState extends ConsumerState<DeleteAccountPage> {
     }
 
     try {
-      final userId = ref.read(authProvider).currentUser?.id;
+      final userId = ref.read(currentUserProvider)?.id;
       if (userId == null) throw Exception('Not authenticated');
 
       await ref.read(profileNotifierProvider(userId).notifier).deleteAccount('DELETE');

@@ -1,7 +1,7 @@
-import '../../core/exceptions/app_exception.dart';
-import '../../core/utils/app_logger.dart';
-import '../models/progress_models.dart';
-import '../supabase/supabase_service.dart';
+import 'package:repsense/core/utils/app_exception.dart';
+import 'package:repsense/core/utils/app_logger.dart';
+import 'package:repsense/data/models/progress_models.dart';
+import 'package:repsense/data/supabase/supabase_service.dart';
 
 /// Repository for fetching progress-related data from Supabase
 /// Handles all database queries with caching and error handling

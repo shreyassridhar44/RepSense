@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import '../../core/exceptions/app_exception.dart';
+import 'package:repsense/core/utils/app_exception.dart';
 import '../../core/utils/app_logger.dart';
 import '../models/inference_models.dart';
 import '../network/dio_client.dart';
@@ -43,29 +43,29 @@ class InferenceRepository {
       AppLogger.error('❌ Failed to analyze angles', e);
 
       if (e.response?.statusCode == 422) {
-        throw AppException('Exercise not recognized by AI service');
+        throw AppException(message: 'Exercise not recognized by AI service');
       }
 
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout) {
         throw AppException(
-          'Analysis timed out — your workout will be saved with basic stats',
+          message: 'Analysis timed out — your workout will be saved with basic stats',
         );
       }
 
       if (e.type == DioExceptionType.connectionError) {
         throw AppException(
-          'Cannot reach AI service — your workout will be saved with basic stats',
+          message: 'Cannot reach AI service — your workout will be saved with basic stats',
         );
       }
 
       throw AppException(
-        'AI analysis failed — your workout will be saved with basic stats',
+        message: 'AI analysis failed — your workout will be saved with basic stats',
       );
     } catch (e, stack) {
       AppLogger.error('❌ Unexpected error in analyzeAngles', e, stack);
       throw AppException(
-        'AI analysis failed — your workout will be saved with basic stats',
+        message: 'AI analysis failed — your workout will be saved with basic stats',
       );
     }
   }

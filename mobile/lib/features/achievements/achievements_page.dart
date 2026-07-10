@@ -26,7 +26,7 @@ class _AchievementsPageState extends ConsumerState<AchievementsPage>
     
     // Load data on init
     Future.microtask(() {
-      final userId = ref.read(authProvider).currentUser?.id;
+      final userId = ref.read(currentUserProvider)?.id;
       if (userId != null) {
         ref.read(achievementsNotifierProvider(userId).notifier).loadData();
       }
@@ -41,7 +41,7 @@ class _AchievementsPageState extends ConsumerState<AchievementsPage>
 
   @override
   Widget build(BuildContext context) {
-    final userId = ref.watch(authProvider).currentUser?.id;
+    final userId = ref.watch(currentUserProvider)?.id;
 
     if (userId == null) {
       return const Scaffold(

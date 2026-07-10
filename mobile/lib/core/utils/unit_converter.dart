@@ -12,7 +12,7 @@ class UnitConverter {
   }
 
   static double feetInchesToCm(int feet, int inches) {
-    return inchesToCm((feet * 12) + inches);
+    return inchesToCm((feet * 12 + inches).toDouble());
   }
 
   // Weight conversions

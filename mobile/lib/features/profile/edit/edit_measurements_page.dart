@@ -6,8 +6,8 @@ import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/unit_converter.dart';
 import '../../../core/utils/bmi_calculator.dart';
-import '../../../core/widgets/glass_card.dart';
-import '../../../core/widgets/gradient_button.dart';
+import '../../../shared/widgets/glass_card.dart';
+import '../../../shared/widgets/gradient_button.dart';
 
 /// Edit body measurements screen
 class EditMeasurementsPage extends ConsumerStatefulWidget {
@@ -30,7 +30,7 @@ class _EditMeasurementsPageState extends ConsumerState<EditMeasurementsPage> {
   void initState() {
     super.initState();
     Future.microtask(() {
-      final userId = ref.read(authProvider).currentUser?.id;
+      final userId = ref.read(currentUserProvider)?.id;
       if (userId != null) {
         final state = ref.read(profileNotifierProvider(userId));
         _localUnits = state.editPreferredUnits;
@@ -66,7 +66,7 @@ class _EditMeasurementsPageState extends ConsumerState<EditMeasurementsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final userId = ref.watch(authProvider).currentUser?.id;
+    final userId = ref.watch(currentUserProvider)?.id;
     if (userId == null) return const Scaffold(body: Center(child: Text('Not authenticated')));
 
     final state = ref.watch(profileNotifierProvider(userId));
@@ -322,7 +322,7 @@ class _EditMeasurementsPageState extends ConsumerState<EditMeasurementsPage> {
         setState(() {
           _localUnits = value;
         });
-        final userId = ref.read(authProvider).currentUser?.id;
+        final userId = ref.read(currentUserProvider)?.id;
         if (userId != null) {
           ref.read(profileNotifierProvider(userId).notifier).setPreferredUnits(value);
           final state = ref.read(profileNotifierProvider(userId));

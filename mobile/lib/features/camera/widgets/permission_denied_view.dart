@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/camera_permission_service.dart';
 
 class PermissionDeniedView extends StatelessWidget {
   final bool isPermanent;
@@ -47,7 +47,7 @@ class PermissionDeniedView extends StatelessWidget {
             const SizedBox(height: 32),
             ElevatedButton.icon(
               onPressed: isPermanent
-                  ? () => CameraPermissionService.openAppSettings()
+                  ? () => openAppSettings()
                   : onRequestPermission,
               icon: Icon(isPermanent ? Icons.settings : Icons.camera_alt),
               label: Text(isPermanent ? 'Open Settings' : 'Grant Permission'),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/gradient_button.dart';
+import '../../../shared/widgets/gradient_button.dart';
 
 /// Guest user profile screen
 class GuestProfileView extends StatelessWidget {

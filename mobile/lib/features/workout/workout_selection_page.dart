@@ -13,7 +13,8 @@ final workoutProvider = StateNotifierProvider<WorkoutNotifier, WorkoutState>((re
 });
 
 class WorkoutSelectionPage extends ConsumerStatefulWidget {
-  const WorkoutSelectionPage({super.key});
+  final bool embedded;
+  const WorkoutSelectionPage({super.key, this.embedded = false});
 
   @override
   ConsumerState<WorkoutSelectionPage> createState() => _WorkoutSelectionPageState();

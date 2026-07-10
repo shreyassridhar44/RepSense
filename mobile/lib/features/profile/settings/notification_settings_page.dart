@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/glass_card.dart';
+import '../../../shared/widgets/glass_card.dart';
 import '../../../data/models/profile_models.dart';
 
 /// Notification settings screen
@@ -50,7 +50,7 @@ class _NotificationSettingsPageState extends ConsumerState<NotificationSettingsP
 
   @override
   Widget build(BuildContext context) {
-    final userId = ref.watch(authProvider).currentUser?.id;
+    final userId = ref.watch(currentUserProvider)?.id;
     if (userId == null) return const Scaffold(body: Center(child: Text('Not authenticated')));
 
     final state = ref.watch(profileNotifierProvider(userId));

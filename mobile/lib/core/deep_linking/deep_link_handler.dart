@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
-import 'package:uni_links/uni_links.dart';
+import 'package:app_links/app_links.dart';
 import 'dart:async';
 
 /// Deep linking handler for RepSense
@@ -10,23 +10,24 @@ import 'dart:async';
 /// - Custom scheme: repsense://*
 class DeepLinkHandler {
   static StreamSubscription? _linkSubscription;
+  static final AppLinks _appLinks = AppLinks();
 
   /// Initialize deep linking
   static Future<void> initialize(GoRouter router) async {
     try {
       // Handle initial link (app launched via deep link)
-      final initialLink = await getInitialLink();
-      if (initialLink != null) {
-        debugPrint('🔗 Initial deep link: $initialLink');
-        _handleDeepLink(initialLink, router);
+      final initialUri = await _appLinks.getInitialLink();
+      if (initialUri != null) {
+        debugPrint('🔗 Initial deep link: $initialUri');
+        _handleDeepLink(initialUri, router);
       }
 
       // Listen for subsequent links (app already running)
-      _linkSubscription = linkStream.listen(
-        (String? link) {
-          if (link != null) {
-            debugPrint('🔗 Deep link received: $link');
-            _handleDeepLink(link, router);
+      _linkSubscription = _appLinks.uriLinkStream.listen(
+        (Uri? uri) {
+          if (uri != null) {
+            debugPrint('🔗 Deep link received: $uri');
+            _handleDeepLink(uri, router);
           }
         },
         onError: (err) {
@@ -46,10 +47,8 @@ class DeepLinkHandler {
   }
 
   /// Handle a deep link
-  static void _handleDeepLink(String link, GoRouter router) {
-    final uri = Uri.parse(link);
-
-    // Remove the scheme and host to get the path
+  static void _handleDeepLink(Uri uri, GoRouter router) {
+    // Get the path from URI
     String path = uri.path;
     if (path.isEmpty) path = '/';
 

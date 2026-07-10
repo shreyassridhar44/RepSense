@@ -2,10 +2,10 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
-import '../../core/exceptions/app_exception.dart';
-import '../../core/utils/app_logger.dart';
-import '../../data/models/chat_models.dart';
-import '../../data/repositories/coach_repository.dart';
+import 'package:repsense/core/utils/app_exception.dart';
+import 'package:repsense/core/utils/app_logger.dart';
+import 'package:repsense/data/models/chat_models.dart';
+import 'package:repsense/data/repositories/coach_repository.dart';
 import '../auth/auth_provider.dart';
 import 'coach_state.dart';
 import 'services/coach_context_builder.dart';
@@ -214,7 +214,7 @@ class CoachNotifier extends StateNotifier<CoachState> {
       AppLogger.error('❌ Failed to send message', e);
       if (_disposed) return;
 
-      final errorMessage = e is AppException ? e.userMessage : 'Failed to send message';
+      final errorMessage = e is AppException ? e.message : 'Failed to send message';
 
       // Update user message to error
       final updatedMessages = state.messages.map((m) {
@@ -308,7 +308,7 @@ class CoachNotifier extends StateNotifier<CoachState> {
       AppLogger.error('❌ Failed to send image', e);
       if (_disposed) return;
 
-      final errorMessage = e is AppException ? e.userMessage : 'Failed to send image';
+      final errorMessage = e is AppException ? e.message : 'Failed to send image';
 
       final updatedMessages = state.messages.map((m) {
         if (m.id == state.messages.last.id && m.role == MessageRole.user) {

@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/glass_card.dart';
-import '../../../core/widgets/gradient_button.dart';
+import '../../../shared/widgets/glass_card.dart';
+import '../../../shared/widgets/gradient_button.dart';
 
 /// Edit personal information screen
 class EditPersonalInfoPage extends ConsumerStatefulWidget {
@@ -34,7 +34,7 @@ class _EditPersonalInfoPageState extends ConsumerState<EditPersonalInfoPage> {
   void initState() {
     super.initState();
     Future.microtask(() {
-      final userId = ref.read(authProvider).currentUser?.id;
+      final userId = ref.read(currentUserProvider)?.id;
       if (userId != null) {
         final state = ref.read(profileNotifierProvider(userId));
         _nameController.text = state.editDisplayName ?? '';
@@ -50,7 +50,7 @@ class _EditPersonalInfoPageState extends ConsumerState<EditPersonalInfoPage> {
 
   @override
   Widget build(BuildContext context) {
-    final userId = ref.watch(authProvider).currentUser?.id;
+    final userId = ref.watch(currentUserProvider)?.id;
     if (userId == null) return const Scaffold(body: Center(child: Text('Not authenticated')));
 
     final state = ref.watch(profileNotifierProvider(userId));
@@ -128,7 +128,8 @@ class _EditPersonalInfoPageState extends ConsumerState<EditPersonalInfoPage> {
                               if (value.trim().length > 40) {
                                 return 'Name must be 40 characters or less';
                               }
-                              if (value.trim() != value.trim().replaceAll(RegExp(r'[^\w\s\-\']'), '')) {
+                              final sanitized = value.trim().replaceAll(RegExp(r"[^\w\s\-']"), '');
+                              if (value.trim() != sanitized) {
                                 return 'Name contains invalid characters';
                               }
                               return null;

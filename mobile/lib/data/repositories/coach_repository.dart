@@ -1,7 +1,7 @@
-import '../../core/exceptions/app_exception.dart';
-import '../../core/network/dio_client.dart';
-import '../../core/utils/app_logger.dart';
-import '../models/chat_models.dart';
+import 'package:repsense/core/utils/app_exception.dart';
+import 'package:repsense/data/network/dio_client.dart';
+import 'package:repsense/core/utils/app_logger.dart';
+import 'package:repsense/data/models/chat_models.dart';
 import 'package:dio/dio.dart';
 
 /// Repository for AI coach interactions
@@ -59,23 +59,23 @@ class CoachRepository {
           e.type == DioExceptionType.sendTimeout ||
           e.type == DioExceptionType.receiveTimeout) {
         throw AppException(
-          'The coach is taking too long — try a simpler question',
+          message: 'The coach is taking too long — try a simpler question',
         );
       }
 
       if (e.response?.statusCode == 503) {
         throw AppException(
-          'Coach service is unavailable — try again in a moment',
+          message: 'Coach service is unavailable — try again in a moment',
         );
       }
 
       throw AppException(
-        'Couldn\'t reach your AI coach — check your connection',
+        message: 'Couldn\'t reach your AI coach — check your connection',
       );
     } catch (e, stack) {
       AppLogger.error('❌ Unexpected coach error', e, stack);
       throw AppException(
-        'Couldn\'t reach your AI coach — check your connection',
+        message: 'Couldn\'t reach your AI coach — check your connection',
       );
     }
   }
@@ -91,7 +91,7 @@ class CoachRepository {
       // Check image size (5MB limit)
       final sizeInMB = (imageBase64.length * 0.75) / (1024 * 1024); // base64 overhead
       if (sizeInMB > 5) {
-        throw AppException('Image is too large — try a smaller screenshot');
+        throw AppException(message: 'Image is too large — try a smaller screenshot');
       }
 
       AppLogger.info('🖼️ Analyzing image with coach');
@@ -125,23 +125,23 @@ class CoachRepository {
           e.type == DioExceptionType.sendTimeout ||
           e.type == DioExceptionType.receiveTimeout) {
         throw AppException(
-          'The coach is taking too long — try a simpler question',
+          message: 'The coach is taking too long — try a simpler question',
         );
       }
 
       if (e.response?.statusCode == 503) {
         throw AppException(
-          'Coach service is unavailable — try again in a moment',
+          message: 'Coach service is unavailable — try again in a moment',
         );
       }
 
       throw AppException(
-        'Couldn\'t reach your AI coach — check your connection',
+        message: 'Couldn\'t reach your AI coach — check your connection',
       );
     } catch (e, stack) {
       AppLogger.error('❌ Unexpected image analysis error', e, stack);
       throw AppException(
-        'Couldn\'t reach your AI coach — check your connection',
+        message: 'Couldn\'t reach your AI coach — check your connection',
       );
     }
   }

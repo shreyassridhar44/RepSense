@@ -29,7 +29,7 @@ class ProfileSetupPage extends ConsumerWidget {
           final shouldExit = await _showExitConfirmation(context);
           if (shouldExit == true && context.mounted) {
             // Sign out user and go back to auth
-            await ref.read(authStateProvider.notifier).future;
+            await ref.read(authStateProvider.future);
             await clearGuestMode();
             if (context.mounted) {
               context.go('/auth');
@@ -49,7 +49,7 @@ class ProfileSetupPage extends ConsumerWidget {
               if (state.currentStep == ProfileSetupStep.personalInfo) {
                 final shouldExit = await _showExitConfirmation(context);
                 if (shouldExit == true && context.mounted) {
-                  await ref.read(authStateProvider.notifier).future;
+                  await ref.read(authStateProvider.future);
                   await clearGuestMode();
                   if (context.mounted) {
                     context.go('/auth');

@@ -173,6 +173,3 @@ class AuthController extends StateNotifier<AuthState> {
 
 final authControllerProvider =
     StateNotifierProvider<AuthController, AuthState>((ref) => AuthController(ref));
-
-final authControllerProvider =
-    StateNotifierProvider<AuthController, AuthState>((ref) => AuthController());

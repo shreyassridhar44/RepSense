@@ -1,9 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../core/auth/auth_bloc.dart';
-import '../../../core/exceptions/app_exception.dart';
-import '../../../core/utils/app_logger.dart';
-import '../../../data/models/progress_models.dart';
-import '../../../data/repositories/progress_repository.dart';
+import 'package:repsense/core/utils/app_exception.dart';
+import 'package:repsense/core/utils/app_logger.dart';
+import 'package:repsense/data/models/progress_models.dart';
+import 'package:repsense/data/repositories/progress_repository.dart';
+import 'package:repsense/data/supabase/supabase_service.dart';
 import '../services/progress_service.dart';
 import 'progress_event.dart';
 import 'progress_state.dart';
@@ -12,15 +12,15 @@ import 'progress_state.dart';
 class ProgressBloc extends Bloc<ProgressEvent, ProgressState> {
   final ProgressService _service;
   final ProgressRepository _repository;
-  final AuthBloc _authBloc;
+  final SupabaseService _supabase;
 
   ProgressBloc({
     ProgressService? service,
     ProgressRepository? repository,
-    required AuthBloc authBloc,
+    SupabaseService? supabase,
   })  : _service = service ?? ProgressService(),
         _repository = repository ?? ProgressRepository(),
-        _authBloc = authBloc,
+        _supabase = supabase ?? SupabaseService.instance,
         super(const ProgressInitial()) {
     on<LoadProgress>(_onLoadProgress);
     on<RefreshProgress>(_onRefreshProgress);
@@ -75,7 +75,7 @@ class ProgressBloc extends Bloc<ProgressEvent, ProgressState> {
       ));
     } on AppException catch (e) {
       AppLogger.error('❌ Failed to load progress', e);
-      emit(ProgressError(e.userMessage));
+      emit(ProgressError(e.message));
     } catch (e, stack) {
       AppLogger.error('❌ Unexpected error loading progress', e, stack);
       emit(const ProgressError('Failed to load progress data'));
@@ -163,10 +163,6 @@ class ProgressBloc extends Bloc<ProgressEvent, ProgressState> {
   }
 
   String? _getUserId() {
-    final authState = _authBloc.state;
-    if (authState is AuthAuthenticated) {
-      return authState.session.user.id;
-    }
-    return null;
+    return _supabase.currentUser?.id;
   }
 }

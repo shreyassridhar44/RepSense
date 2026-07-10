@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../core/auth/auth_bloc.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/progress_models.dart';
 import '../../shared/widgets/glass_card.dart';
@@ -20,9 +19,7 @@ class ProgressPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => ProgressBloc(
-        authBloc: context.read<AuthBloc>(),
-      )..add(const LoadProgress()),
+      create: (context) => ProgressBloc()..add(const LoadProgress()),
       child: const _ProgressPageContent(),
     );
   }

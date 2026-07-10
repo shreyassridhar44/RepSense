@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/glass_card.dart';
+import '../../../shared/widgets/glass_card.dart';
 import '../../../data/services/daily_challenge_service.dart';
 
 /// Challenges tab showing daily challenges

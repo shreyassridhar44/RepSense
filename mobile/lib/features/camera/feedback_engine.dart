@@ -153,8 +153,8 @@ class FeedbackEngine {
     }
 
     // Check shoulder elevation
-    final shoulderElev = (angles['left_shoulder_elevation'] ?? 0.0 + 
-                         angles['right_shoulder_elevation'] ?? 0.0) / 2;
+    final shoulderElev = ((angles['left_shoulder_elevation'] ?? 0.0) + 
+                         (angles['right_shoulder_elevation'] ?? 0.0)) / 2;
     if (shoulderElev > 60.0 && phase == RepPhase.up) {
       return const FeedbackMessage(
         text: 'Keep your shoulders packed — avoid shrugging',

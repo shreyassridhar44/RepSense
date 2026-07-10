@@ -1,11 +1,12 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
-import '../../core/constants/app_config.dart';
-import '../../core/exceptions/app_exception.dart';
-import '../../core/utils/app_logger.dart';
-import '../models/profile_models.dart';
-import '../supabase/supabase_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:repsense/core/constants/app_config.dart';
+import 'package:repsense/core/utils/app_exception.dart';
+import 'package:repsense/core/utils/app_logger.dart';
+import 'package:repsense/data/models/profile_models.dart';
+import 'package:repsense/data/supabase/supabase_service.dart';
 
 /// Repository for profile and settings operations
 class ProfileRepository {
@@ -40,7 +41,7 @@ class ProfileRepository {
       return profile;
     } catch (e, stack) {
       AppLogger.error('Failed to get profile', e, stack);
-      throw AppException('Failed to load profile');
+      throw AppException(message: 'Failed to load profile');
     }
   }
 
@@ -57,7 +58,7 @@ class ProfileRepository {
       AppLogger.info('✅ Profile updated successfully');
     } catch (e, stack) {
       AppLogger.error('Failed to update profile', e, stack);
-      throw AppException('Failed to save changes');
+      throw AppException(message: 'Failed to save changes');
     }
   }
 
@@ -72,7 +73,7 @@ class ProfileRepository {
       await _supabase.client.storage
           .from('avatars')
           .uploadBinary(fileName, imageBytes,
-              fileOptions: const FileOptions(upsert: true));
+              fileOptions: FileOptions(upsert: true));
 
       // Get public URL
       final url = _supabase.client.storage.from('avatars').getPublicUrl(fileName);
@@ -87,7 +88,7 @@ class ProfileRepository {
       return timestampedUrl;
     } catch (e, stack) {
       AppLogger.error('Failed to upload avatar', e, stack);
-      throw AppException('Couldn\'t upload photo — try again');
+      throw AppException(message: 'Couldn\'t upload photo — try again');
     }
   }
 
@@ -112,7 +113,7 @@ class ProfileRepository {
       AppLogger.info('✅ Avatar deleted successfully');
     } catch (e, stack) {
       AppLogger.error('Failed to delete avatar', e, stack);
-      throw AppException('Couldn\'t remove photo');
+      throw AppException(message: 'Couldn\'t remove photo');
     }
   }
 
@@ -150,7 +151,7 @@ class ProfileRepository {
       AppLogger.info('✅ Feedback submitted successfully');
     } catch (e, stack) {
       AppLogger.error('Failed to submit feedback', e, stack);
-      throw AppException('Couldn\'t send feedback — try again');
+      throw AppException(message: 'Couldn\'t send feedback — try again');
     }
   }
 
@@ -160,7 +161,7 @@ class ProfileRepository {
       AppLogger.info('📦 Exporting user data');
 
       // Fetch all user data in parallel
-      final results = await Future.wait([
+      final results = await Future.wait<dynamic>([
         _supabase.client.from('profiles').select().eq('id', userId).single(),
         _supabase.client.from('workouts').select().eq('user_id', userId),
         _supabase.client.from('achievements').select().eq('user_id', userId),
@@ -185,9 +186,9 @@ class ProfileRepository {
     } catch (e, stack) {
       AppLogger.error('Failed to export data', e, stack);
       if (e.toString().contains('timeout')) {
-        throw AppException('Export timed out — try again');
+        throw AppException(message: 'Export timed out — try again');
       }
-      throw AppException('Failed to export data');
+      throw AppException(message: 'Failed to export data');
     }
   }
 
@@ -199,7 +200,7 @@ class ProfileRepository {
       // Get current session token
       final session = _supabase.client.auth.currentSession;
       if (session == null) {
-        throw AppException('Not authenticated');
+        throw AppException(message: 'Not authenticated');
       }
 
       // Get backend URL from config
@@ -216,7 +217,7 @@ class ProfileRepository {
       );
 
       if (response.statusCode != 200) {
-        throw AppException('Account deletion failed: ${response.body}');
+        throw AppException(message: 'Account deletion failed: ${response.body}');
       }
 
       // Sign out after successful deletion
@@ -225,7 +226,7 @@ class ProfileRepository {
       AppLogger.info('✅ Account deleted successfully');
     } catch (e, stack) {
       AppLogger.error('Failed to delete account', e, stack);
-      throw AppException('Couldn\'t delete account — ${e.toString()}');
+      throw AppException(message: 'Couldn\'t delete account — ${e.toString()}');
     }
   }
 

@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/glass_card.dart';
-import '../../../core/widgets/gradient_button.dart';
+import '../../../shared/widgets/glass_card.dart';
+import '../../../shared/widgets/gradient_button.dart';
 
 /// Feedback submission screen
 class FeedbackPage extends ConsumerStatefulWidget {
@@ -220,7 +220,7 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage> {
     setState(() => _isSubmitting = true);
 
     try {
-      final userId = ref.read(authProvider).currentUser?.id;
+      final userId = ref.read(currentUserProvider)?.id;
       if (userId == null) throw Exception('Not authenticated');
 
       await ref.read(profileNotifierProvider(userId).notifier).submitFeedback(

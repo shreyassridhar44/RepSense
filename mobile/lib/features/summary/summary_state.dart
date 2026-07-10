@@ -46,7 +46,7 @@ class SummaryState extends Equatable {
     this.repQuality = const [],
     this.durationSeconds = 0,
     this.estimatedCalories = 0.0,
-    DateTime? sessionStartTime,
+    required this.sessionStartTime,
     this.angleSequence = const [],
     this.inferenceResult,
     this.workoutSummaryText,
@@ -56,7 +56,7 @@ class SummaryState extends Equatable {
     this.inferenceFailedButSaved = false,
     this.saveErrorMessage,
     this.isSaved = false,
-  }) : sessionStartTime = sessionStartTime ?? DateTime.now();
+  });
 
   // Derived getters
   double get displayScore => inferenceResult?.avgScore ?? _basicScore;

@@ -4,8 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/password_validator.dart';
-import '../../../core/widgets/glass_card.dart';
-import '../../../core/widgets/gradient_button.dart';
+import '../../../shared/widgets/glass_card.dart';
+import '../../../shared/widgets/gradient_button.dart';
 
 /// Change password screen
 class ChangePasswordPage extends ConsumerStatefulWidget {
@@ -37,7 +37,7 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(authProvider).currentUser;
+    final user = ref.watch(currentUserProvider);
     final isOAuthUser = user?.appMetadata?['provider'] != 'email';
 
     if (isOAuthUser) {
@@ -207,13 +207,13 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
                             if (value.length < 8) {
                               return 'Password must be at least 8 characters';
                             }
-                            if (!PasswordValidator.hasUppercase(value)) {
+                            if (!RegExp(r'[A-Z]').hasMatch(value)) {
                               return 'Password must contain an uppercase letter';
                             }
-                            if (!PasswordValidator.hasLowercase(value)) {
+                            if (!RegExp(r'[a-z]').hasMatch(value)) {
                               return 'Password must contain a lowercase letter';
                             }
-                            if (!PasswordValidator.hasNumber(value)) {
+                            if (!RegExp(r'[0-9]').hasMatch(value)) {
                               return 'Password must contain a number';
                             }
                             if (value == _currentPasswordController.text) {
@@ -376,7 +376,7 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
     });
 
     try {
-      final userId = ref.read(authProvider).currentUser?.id;
+      final userId = ref.read(currentUserProvider)?.id;
       if (userId == null) throw Exception('Not authenticated');
 
       await ref.read(profileNotifierProvider(userId).notifier).changePassword(

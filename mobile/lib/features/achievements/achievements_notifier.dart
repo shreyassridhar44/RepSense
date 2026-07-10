@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/utils/app_logger.dart';
 import '../../data/repositories/achievements_repository.dart';
+import '../../data/models/gamification_models.dart';
+import '../../data/services/daily_challenge_service.dart';
 import 'achievements_state.dart';
 
 /// Notifier for achievements screen
@@ -34,11 +36,11 @@ class AchievementsNotifier extends StateNotifier<AchievementsState> {
 
       state = state.copyWith(
         status: AchievementsStatus.success,
-        stats: results[0],
-        achievements: results[1],
-        leaderboard: results[2],
-        todaysChallenge: results[3],
-        challengeHistory: results[4],
+        stats: results[0] as UserGamificationStats?,
+        achievements: results[1] as List<Achievement>?,
+        leaderboard: results[2] as List<LeaderboardEntry>?,
+        todaysChallenge: results[3] as DailyChallenge?,
+        challengeHistory: results[4] as List<DailyChallenge>?,
       );
 
       AppLogger.info('✅ Achievements data loaded');

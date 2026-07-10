@@ -3,10 +3,11 @@ import 'package:camera/camera.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../core/utils/app_logger.dart';
-import '../../core/utils/camera_permission_service.dart';
 import '../../core/utils/image_converter.dart';
 import '../../data/repositories/exercise_repository.dart';
+import '../../data/supabase/supabase_service.dart';
 import 'camera_state.dart';
 import 'feedback_engine.dart';
 import 'joint_angle_engine.dart';
@@ -43,17 +44,17 @@ class CameraNotifier extends StateNotifier<CameraState> {
       state = state.copyWith(status: CameraStatus.initializing);
 
       // Check camera permission
-      final permissionStatus = await CameraPermissionService.checkPermission();
-      if (permissionStatus == CameraPermissionStatus.denied) {
-        final granted = await CameraPermissionService.requestPermission();
-        if (!granted) {
+      final permissionStatus = await Permission.camera.status;
+      if (permissionStatus.isDenied) {
+        final granted = await Permission.camera.request();
+        if (!granted.isGranted) {
           state = state.copyWith(
             status: CameraStatus.permissionDenied,
             errorMessage: 'Camera permission is required',
           );
           return;
         }
-      } else if (permissionStatus == CameraPermissionStatus.permanentlyDenied) {
+      } else if (permissionStatus.isPermanentlyDenied) {
         state = state.copyWith(
           status: CameraStatus.permissionPermanentlyDenied,
           errorMessage: 'Please grant camera permission in settings',
@@ -62,7 +63,8 @@ class CameraNotifier extends StateNotifier<CameraState> {
       }
 
       // Load exercise details
-      final exercise = await _exerciseRepository.getExerciseById(exerciseId);
+      final userId = SupabaseService.instance.currentUser?.id ?? '';
+      final exercise = await _exerciseRepository.getExerciseById(exerciseId, userId);
       if (exercise == null) {
         state = state.copyWith(
           status: CameraStatus.error,
@@ -518,9 +520,9 @@ class CameraNotifier extends StateNotifier<CameraState> {
   /// Check if person is at good distance from camera
   bool _checkDistance(Pose pose) {
     // Check if full body is visible
-    final hasHead = pose.landmarks[PoseLandmarkType.nose]?.likelihood ?? 0 > 0.5;
-    final hasFeet = (pose.landmarks[PoseLandmarkType.leftAnkle]?.likelihood ?? 0 > 0.5) &&
-                    (pose.landmarks[PoseLandmarkType.rightAnkle]?.likelihood ?? 0 > 0.5);
+    final hasHead = (pose.landmarks[PoseLandmarkType.nose]?.likelihood ?? 0) > 0.5;
+    final hasFeet = ((pose.landmarks[PoseLandmarkType.leftAnkle]?.likelihood ?? 0) > 0.5) &&
+                    ((pose.landmarks[PoseLandmarkType.rightAnkle]?.likelihood ?? 0) > 0.5);
     
     return hasHead && hasFeet;
   }

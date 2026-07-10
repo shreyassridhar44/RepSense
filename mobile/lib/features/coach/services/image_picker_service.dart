@@ -3,8 +3,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image/image.dart' as img;
-import '../../../core/exceptions/app_exception.dart';
-import '../../../core/utils/app_logger.dart';
+import 'package:repsense/core/utils/app_exception.dart';
+import 'package:repsense/core/utils/app_logger.dart';
 
 /// Service for picking and processing images
 class ImagePickerService {
@@ -53,7 +53,7 @@ class ImagePickerService {
       // Decode image
       img.Image? image = img.decodeImage(bytes);
       if (image == null) {
-        throw AppException('Failed to decode image');
+        throw AppException(message: 'Failed to decode image');
       }
 
       // Resize to max 1024px on longest side
@@ -75,7 +75,7 @@ class ImagePickerService {
       // Check size (5MB limit)
       final sizeInMB = (base64String.length * 0.75) / (1024 * 1024);
       if (sizeInMB > 5) {
-        throw AppException('Image is too large — try a smaller screenshot');
+        throw AppException(message: 'Image is too large — try a smaller screenshot');
       }
 
       AppLogger.info('✅ Image processed: ${(sizeInMB).toStringAsFixed(2)}MB');
@@ -84,7 +84,7 @@ class ImagePickerService {
     } catch (e) {
       if (e is AppException) rethrow;
       AppLogger.error('Failed to process image', e);
-      throw AppException('Failed to process image');
+      throw AppException(message: 'Failed to process image');
     }
   }
 }

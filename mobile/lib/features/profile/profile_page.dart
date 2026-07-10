@@ -1,10 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../core/providers/providers.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/widgets/glass_card.dart';
+import '../../shared/widgets/glass_card.dart';
 import '../../data/services/xp_service.dart';
 
 /// Main profile and settings page
@@ -20,7 +22,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   void initState() {
     super.initState();
     Future.microtask(() {
-      final userId = ref.read(authProvider).currentUser?.id;
+      final userId = ref.read(currentUserProvider)?.id;
       if (userId != null) {
         ref.read(profileNotifierProvider(userId).notifier).load();
       }
@@ -29,7 +31,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    final userId = ref.watch(authProvider).currentUser?.id;
+    final userId = ref.watch(currentUserProvider)?.id;
 
     if (userId == null) {
       return const Scaffold(

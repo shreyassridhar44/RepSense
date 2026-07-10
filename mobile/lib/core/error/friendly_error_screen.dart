@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_phoenix/flutter_phoenix.dart';
 import 'package:uuid/uuid.dart';
 import '../theme/app_theme.dart';
-import '../widgets/gradient_button.dart';
+import '../../shared/widgets/gradient_button.dart';
 
 /// Friendly error screen shown in release mode when an unhandled error occurs
 class FriendlyErrorScreen extends StatefulWidget {

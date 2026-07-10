@@ -136,7 +136,6 @@ final profileNotifierProvider = StateNotifierProvider.family<ProfileNotifier, Pr
   return ProfileNotifier(
     repository: ref.watch(profileRepositoryProvider),
     userId: userId,
-    imagePickerService: ref.watch(imagePickerServiceProvider),
   );
 });
 

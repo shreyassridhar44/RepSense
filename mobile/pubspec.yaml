@@ -65,7 +65,7 @@ dependencies:
   # Module 10: Production Readiness (Supabase-compatible)
   connectivity_plus: ^6.0.5       # Network status monitoring
   flutter_phoenix: ^1.1.1         # App hot restart
-  uni_links: ^0.5.1               # Deep linking
+  # app_links: ^7.0.0             # Deep linking (not used yet, enable when needed)
 
   cupertino_icons: ^1.0.8
   confetti: ^0.8.0
